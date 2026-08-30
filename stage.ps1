@@ -27,15 +27,17 @@ if (-not (Test-Path $GitIgnorePath)) {
     "kubeconfig-*.tmp" | Out-File -FilePath $GitIgnorePath -Force
 }
 
-##################################
-# --- STEP 1: LOADING ADDONS CONFIG ---
-##################################
+####################################################################
+###  --- STEP 1: LOADING ADDONS CONFIG ---
+####################################################################
+
 Write-Host " STEP 1: LOADING ADDONS INVENTORY CONFIG " -ForegroundColor Cyan
 $Addons = Get-Content -Raw -Path $ConfigFile | ConvertFrom-Yaml
 
-##################################
-# --- STEP 2: CHECKING STAGING TOOLS ---
-##################################
+####################################################################
+### --- STEP 2: CHECKING STAGING TOOLS ---
+####################################################################
+
 Write-Host " STEP 2: CHECKING STAGING TOOLS " -ForegroundColor Cyan
 if (-not (Get-Command "helm" -ErrorAction SilentlyContinue)) {
     Write-Error "Prerequisite tool missing from PATH: helm"
@@ -47,9 +49,10 @@ if (-not (Get-Command "git" -ErrorAction SilentlyContinue)) {
 }
 Write-Host "✓ Core staging command tools found." -ForegroundColor Green
 
-##################################
-# --- STEP 3: STAGING LOCAL ASSETS ---
-##################################
+####################################################################
+### --- STEP 3: STAGING LOCAL ASSETS ---
+####################################################################
+
 Write-Host " STEP 3: STAGING LOCAL ASSETS " -ForegroundColor Cyan
 
 foreach ($Addon in $Addons) {

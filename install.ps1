@@ -23,9 +23,10 @@ $ChartsDir = Join-Path $CurrentDir "charts"
 $OverridesDir = Join-Path $CurrentDir "overrides"
 $Addons = Get-Content -Raw -Path $ConfigFile | ConvertFrom-Yaml
 
-##################################
+####################################################################
 # --- STEP 1: CHECKING DEPLOYMENT TOOLS ---
-##################################
+####################################################################
+
 Write-Host " STEP 1: CHECKING DEPLOYMENT TOOLS " -ForegroundColor Cyan
 foreach ($Tool in @("aws", "helm", "kubectl")) {
     if (-not (Get-Command $Tool -ErrorAction SilentlyContinue)) {
@@ -35,9 +36,10 @@ foreach ($Tool in @("aws", "helm", "kubectl")) {
 }
 Write-Host "✓ All deployment tools found." -ForegroundColor Green
 
-##################################
+####################################################################
 # --- STEP 2: CREATING ISOLATED CONTEXT ---
-##################################
+####################################################################
+
 Write-Host " STEP 2: CREATING ISOLATED CONTEXT " -ForegroundColor Cyan
 
 $TempKubeConfig = Join-Path $CurrentDir "kubeconfig-$ClusterName.tmp"
@@ -48,9 +50,10 @@ aws eks update-kubeconfig --region $Region --name $ClusterName
 
 if ($LASTEXITCODE -ne 0) { Write-Error "Failed to connect to EKS."; exit }
 
-##################################
-# --- STEP 3: RUNNING INSTALLATIONS ---
-##################################
+####################################################################
+### --- STEP 3: RUNNING INSTALLATIONS ---
+####################################################################
+
 Write-Host " STEP 3: RUNNING INSTALLATIONS " -ForegroundColor Cyan
 
 try {
