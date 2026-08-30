@@ -1,0 +1,32 @@
+webhook:
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+cainjector:
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+volumeMounts:
+- name: custom-ca-bundle
+  mountPath: /host-ca
+  readOnly: true
+extraArgs:
+- --issuer-ambient-credentials
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+env:
+- name: AWS_CA_BUNDLE
+  value: /host-ca/tls-ca-bundle.pem
+volumes:
+- name: custom-ca-bundle
+  hostPath:
+    type: Directory
+    path: /etc/pki/tls/certs
+

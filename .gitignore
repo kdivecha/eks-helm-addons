@@ -1,0 +1,2 @@
+# Ignore temporary cluster login context files
+kubeconfig-*

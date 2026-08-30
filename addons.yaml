@@ -1,0 +1,379 @@
+- ChartName: eks-pod-identity-agent
+  Enabled: true
+  RepoUrl: https://github.com/aws/eks-pod-identity-agent
+  ChartVersion: main
+  Namespace: kube-system
+  ValuesFile: pod-identity-agent.yaml
+  IsGitRepoChart: true
+  RolloutTargets:
+    - Type: daemonset
+      Name: eks-pod-identity-agent
+  DefaultValues:
+    resources:
+      limits: { cpu: "100m", memory: "128Mi" }
+      requests: { cpu: "20m", memory: "40Mi" }
+
+- ChartName: aws-load-balancer-controller
+  Enabled: true
+  RepoUrl: https://aws.github.io/eks-charts
+  ChartVersion: 1.7.1
+  Namespace: kube-system
+  ValuesFile: lb-controller.yaml
+  PodIdentity:
+    RoleArn: arn:aws:iam::123456789012:role/AWSLoadBalancerControllerPodIdentityRole
+    ServiceAccount: aws-load-balancer-controller
+  RolloutTargets:
+    - Type: deployment
+      Name: aws-load-balancer-controller
+  DefaultValues:
+    resources:
+      limits: { cpu: "200m", memory: "256Mi" }
+      requests: { cpu: "100m", memory: "128Mi" }
+    env:
+      AWS_CA_BUNDLE: "/host-ca/tls-ca-bundle.pem"
+    extraVolumes:
+      - name: custom-ca-bundle
+        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+    extraVolumeMounts:
+      - name: custom-ca-bundle
+        mountPath: "/host-ca"
+        readOnly: true
+
+- ChartName: aws-ebs-csi-driver
+  Enabled: true
+  RepoUrl: https://kubernetes-sigs.github.io/aws-ebs-csi-driver
+  ChartVersion: 2.64.0
+  Namespace: kube-system
+  ValuesFile: aws-ebs-csi-driver.yaml
+  PodIdentity:
+    RoleArn: arn:aws:iam::123456789012:role/AWSEBSCSIDriverPodIdentityRole
+    ServiceAccount: ebs-csi-controller-sa
+  RolloutTargets:
+    - Type: deployment
+      Name: ebs-csi-controller
+    - Type: daemonset
+      Name: ebs-csi-node
+  DefaultValues:
+    controller:
+      resources:
+        limits: { cpu: "200m", memory: "256Mi" }
+        requests: { cpu: "100m", memory: "128Mi" }
+      env:
+        - name: AWS_CA_BUNDLE
+          value: "/host-ca/tls-ca-bundle.pem"
+      extraVolumes:
+        - name: custom-ca-bundle
+          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      extraVolumeMounts:
+        - name: custom-ca-bundle
+          mountPath: "/host-ca"
+          readOnly: true
+    node:
+      env:
+        - name: AWS_CA_BUNDLE
+          value: "/host-ca/tls-ca-bundle.pem"
+      extraVolumes:
+        - name: custom-ca-bundle
+          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      extraVolumeMounts:
+        - name: custom-ca-bundle
+          mountPath: "/host-ca"
+          readOnly: true
+
+- ChartName: cluster-proportional-autoscaler
+  Enabled: true
+  RepoUrl: https://kubernetes-sigs.github.io/cluster-proportional-autoscaler
+  ChartVersion: 1.1.0
+  Namespace: kube-system
+  ValuesFile: cluster-proportional-autoscaler.yaml
+  PodIdentity:
+    RoleArn: arn:aws:iam::123456789012:role/ClusterProportionalAutoscalerPodIdentityRole
+    ServiceAccount: cluster-proportional-autoscaler
+  RolloutTargets:
+    - Type: deployment
+      Name: cluster-proportional-autoscaler
+  DefaultValues:
+    resources:
+      limits: { cpu: "100m", memory: "128Mi" }
+      requests: { cpu: "50m", memory: "64Mi" }
+    env:
+      - name: AWS_CA_BUNDLE
+        value: "/host-ca/tls-ca-bundle.pem"
+    extraVolumes:
+      - name: custom-ca-bundle
+        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+    extraVolumeMounts:
+      - name: custom-ca-bundle
+        mountPath: "/host-ca"
+        readOnly: true
+    config:
+      linear:
+        coresPerReplica: 256
+        nodesPerReplica: 16
+        min: 1
+
+- ChartName: cert-manager
+  Enabled: true
+  RepoUrl: https://charts.jetstack.io
+  ChartVersion: v1.14.4
+  Namespace: cert-manager
+  ValuesFile: cert-manager.yaml
+  PodIdentity:
+    RoleArn: arn:aws:iam::123456789012:role/CertManagerPodIdentityRole
+    ServiceAccount: cert-manager
+  RolloutTargets:
+    - Type: deployment
+      Name: cert-manager
+    - Type: deployment
+      Name: cert-manager-cainjector
+    - Type: deployment
+      Name: cert-manager-webhook
+  DefaultValues:
+    resources:
+      limits: { cpu: "100m", memory: "128Mi" }
+      requests: { cpu: "50m", memory: "64Mi" }
+    extraArgs:
+      - --issuer-ambient-credentials
+    env:
+      - name: AWS_CA_BUNDLE
+        value: "/host-ca/tls-ca-bundle.pem"
+    volumes:
+      - name: custom-ca-bundle
+        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+    volumeMounts:
+      - name: custom-ca-bundle
+        mountPath: "/host-ca"
+        readOnly: true
+    cainjector:
+      resources:
+        limits: { cpu: "100m", memory: "256Mi" }
+    webhook:
+      resources:
+        limits: { cpu: "100m", memory: "128Mi" }
+
+- ChartName: external-dns
+  Enabled: true
+  RepoUrl: https://kubernetes-sigs.github.io/external-dns/
+  ChartVersion: 1.20.0
+  Namespace: kube-system
+  ValuesFile: external-dns.yaml
+  PodIdentity:
+    RoleArn: arn:aws:iam::123456789012:role/ExternalDNSPodIdentityRole
+    ServiceAccount: external-dns
+  RolloutTargets:
+    - Type: deployment
+      Name: external-dns
+  DefaultValues:
+    resources:
+      limits: { cpu: "100m", memory: "128Mi" }
+      requests: { cpu: "50m", memory: "64Mi" }
+    env:
+      - name: AWS_CA_BUNDLE
+        value: "/host-ca/tls-ca-bundle.pem"
+    extraVolumes:
+      - name: custom-ca-bundle
+        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+    extraVolumeMounts:
+      - name: custom-ca-bundle
+        mountPath: "/host-ca"
+        readOnly: true
+
+- ChartName: kube-prometheus-stack
+  Enabled: true
+  RepoUrl: https://prometheus-community.github.io/helm-charts
+  ChartVersion: 88.6.1
+  Namespace: monitoring
+  ValuesFile: prometheus-stack.yaml
+  RolloutTargets:
+    - Type: deployment
+      Name: kube-prometheus-stack-operator
+    - Type: deployment
+      Name: kube-prometheus-stack-grafana
+    - Type: statefulset
+      Name: prometheus-kube-prometheus-stack-prometheus
+  DefaultValues:
+    prometheus:
+      prometheusSpec:
+        resources:
+          limits: { cpu: "1000m", memory: "2Gi" }
+          requests: { cpu: "500m", memory: "1Gi" }
+        containers:
+          - name: prometheus
+            env:
+              - name: AWS_CA_BUNDLE
+                value: "/host-ca/tls-ca-bundle.pem"
+            volumeMounts:
+              - name: custom-ca-bundle
+                mountPath: "/host-ca"
+                readOnly: true
+        volumes:
+          - name: custom-ca-bundle
+            hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+
+- ChartName: loki
+  Enabled: true
+  RepoUrl: https://grafana.github.io/helm-charts
+  ChartVersion: 6.55.0
+  Namespace: monitoring
+  ValuesFile: loki.yaml
+  RolloutTargets:
+    - Type: deployment
+      Name: loki-gateway
+    - Type: statefulset
+      Name: loki-backend
+    - Type: statefulset
+      Name: loki-read
+    - Type: statefulset
+      Name: loki-write
+  DefaultValues:
+    loki:
+      resources:
+        limits: { cpu: "500m", memory: "1Gi" }
+        requests: { cpu: "250m", memory: "512Mi" }
+    deploymentMode: SimpleScalable
+    backend:
+      extraEnv:
+        - name: AWS_CA_BUNDLE
+          value: "/host-ca/tls-ca-bundle.pem"
+      extraVolumes:
+        - name: custom-ca-bundle
+          hostPath: { path: "/etc/pki/tls/certs" }
+      extraVolumeMounts:
+        - name: custom-ca-bundle
+          mountPath: "/host-ca"
+    write:
+      extraEnv:
+        - name: AWS_CA_BUNDLE
+          value: "/host-ca/tls-ca-bundle.pem"
+      extraVolumes:
+        - name: custom-ca-bundle
+          hostPath: { path: "/etc/pki/tls/certs" }
+      extraVolumeMounts:
+        - name: custom-ca-bundle
+          mountPath: "/host-ca"
+
+- ChartName: promtail
+  Enabled: true
+  RepoUrl: https://grafana.github.io/helm-charts
+  ChartVersion: 6.17.1
+  Namespace: logging
+  ValuesFile: promtail.yaml
+  PodIdentity:
+    RoleArn: arn:aws:iam::123456789012:role/PromtailPodIdentityRole
+    ServiceAccount: promtail
+  RolloutTargets:
+    - Type: daemonset
+      Name: promtail
+  DefaultValues:
+    resources:
+      limits: { cpu: "200m", memory: "256Mi" }
+      requests: { cpu: "100m", memory: "128Mi" }
+    extraEnv:
+      - name: AWS_CA_BUNDLE
+        value: "/host-ca/tls-ca-bundle.pem"
+    extraVolumes:
+      - name: custom-ca-bundle
+        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+    extraVolumeMounts:
+      - name: custom-ca-bundle
+        mountPath: "/host-ca"
+        readOnly: true
+
+- ChartName: nats
+  Enabled: true
+  RepoUrl: https://nats-io.github.io/k8s/helm/charts
+  ChartVersion: 2.12.4
+  Namespace: nats
+  ValuesFile: nats.yaml
+  RolloutTargets:
+    - Type: statefulset
+      Name: nats
+  DefaultValues:
+    nats:
+      resources:
+        limits: { cpu: "500m", memory: "512Mi" }
+        requests: { cpu: "250m", memory: "256Mi" }
+    container:
+      env:
+        AWS_CA_BUNDLE: "/host-ca/tls-ca-bundle.pem"
+      volumeMounts:
+        - name: custom-ca-bundle
+          mountPath: "/host-ca"
+          readOnly: true
+    volumes:
+      - name: custom-ca-bundle
+        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+
+- ChartName: argo-cd
+  Enabled: true
+  RepoUrl: https://argoproj.github.io/argo-helm
+  ChartVersion: 10.4.1
+  Namespace: argocd
+  ValuesFile: argo-cd.yaml
+  PodIdentity:
+    RoleArn: arn:aws:iam::123456789012:role/ArgoCDPodIdentityRole
+    ServiceAccount: argocd-application-controller
+  RolloutTargets:
+    - Type: deployment
+      Name: argocd-server
+    - Type: deployment
+      Name: argocd-repo-server
+  DefaultValues:
+    global:
+      logging: { level: info }
+    server:
+      resources:
+        limits: { cpu: "500m", memory: "512Mi" }
+        requests: { cpu: "125m", memory: "256Mi" }
+      env:
+        - name: AWS_CA_BUNDLE
+          value: "/host-ca/tls-ca-bundle.pem"
+      volumes:
+        - name: custom-ca-bundle
+          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      volumeMounts:
+        - name: custom-ca-bundle
+          mountPath: "/host-ca"
+          readOnly: true
+    repoServer:
+      resources:
+        limits: { cpu: "1000m", memory: "1Gi" }
+      env:
+        - name: AWS_CA_BUNDLE
+          value: "/host-ca/tls-ca-bundle.pem"
+      volumes:
+        - name: custom-ca-bundle
+          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      volumeMounts:
+        - name: custom-ca-bundle
+          mountPath: "/host-ca"
+          readOnly: true
+
+- ChartName: karpenter
+  Enabled: true
+  RepoUrl: oci://public.ecr.aws/karpenter/karpenter
+  ChartVersion: 1.14.0
+  Namespace: kube-system
+  ValuesFile: karpenter.yaml
+  IsOCI: true
+  PodIdentity:
+    RoleArn: arn:aws:iam::123456789012:role/KarpenterPodIdentityRole
+    ServiceAccount: karpenter
+  RolloutTargets:
+    - Type: deployment
+      Name: karpenter
+  DefaultValues:
+    controller:
+      resources:
+        limits: { cpu: "1000m", memory: "1Gi" }
+        requests: { cpu: "500m", memory: "512Mi" }
+      env:
+        - name: AWS_CA_BUNDLE
+          value: "/host-ca/tls-ca-bundle.pem"
+      extraVolumes:
+        - name: custom-ca-bundle
+          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      extraVolumeMounts:
+        - name: custom-ca-bundle
+          mountPath: "/host-ca"
+          readOnly: true

@@ -1,0 +1,32 @@
+backend:
+  extraVolumeMounts:
+  - name: custom-ca-bundle
+    mountPath: /host-ca
+  extraVolumes:
+  - name: custom-ca-bundle
+    hostPath:
+      path: /etc/pki/tls/certs
+  extraEnv:
+  - name: AWS_CA_BUNDLE
+    value: /host-ca/tls-ca-bundle.pem
+loki:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+write:
+  extraVolumeMounts:
+  - name: custom-ca-bundle
+    mountPath: /host-ca
+  extraVolumes:
+  - name: custom-ca-bundle
+    hostPath:
+      path: /etc/pki/tls/certs
+  extraEnv:
+  - name: AWS_CA_BUNDLE
+    value: /host-ca/tls-ca-bundle.pem
+deploymentMode: SimpleScalable
+

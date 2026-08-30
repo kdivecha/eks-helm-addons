@@ -1,0 +1,24 @@
+prometheus:
+  prometheusSpec:
+    volumes:
+    - name: custom-ca-bundle
+      hostPath:
+        type: Directory
+        path: /etc/pki/tls/certs
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
+    containers:
+    - name: prometheus
+      volumeMounts:
+      - name: custom-ca-bundle
+        mountPath: /host-ca
+        readOnly: true
+      env:
+      - name: AWS_CA_BUNDLE
+        value: /host-ca/tls-ca-bundle.pem
+

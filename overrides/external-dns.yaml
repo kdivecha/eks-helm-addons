@@ -1,0 +1,20 @@
+extraVolumeMounts:
+- name: custom-ca-bundle
+  mountPath: /host-ca
+  readOnly: true
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+extraVolumes:
+- name: custom-ca-bundle
+  hostPath:
+    type: Directory
+    path: /etc/pki/tls/certs
+env:
+- name: AWS_CA_BUNDLE
+  value: /host-ca/tls-ca-bundle.pem
+

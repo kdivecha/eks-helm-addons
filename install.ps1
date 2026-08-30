@@ -1,0 +1,126 @@
+#!/usr/bin/env pwsh
+[CmdletBinding()]
+param (
+    [Parameter(Mandatory = $true, Position = 0, HelpMessage = "The name of your Amazon EKS Cluster")]
+    [string]$ClusterName
+)
+
+if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
+    Write-Error "Required module 'powershell-yaml' is missing. Run: Install-Module powershell-yaml"
+    exit
+}
+
+$Region = "us-east-1"  
+$CurrentDir = Get-Location
+$ConfigFile = Join-Path $CurrentDir "addons.yaml"
+
+if (-not (Test-Path $ConfigFile)) {
+    Write-Error "Configuration data file not found at: $ConfigFile"
+    exit
+}
+
+$ChartsDir = Join-Path $CurrentDir "charts"
+$OverridesDir = Join-Path $CurrentDir "overrides"
+$Addons = Get-Content -Raw -Path $ConfigFile | ConvertFrom-Yaml
+
+##################################
+# --- STEP 1: CHECKING DEPLOYMENT TOOLS ---
+##################################
+Write-Host " STEP 1: CHECKING DEPLOYMENT TOOLS " -ForegroundColor Cyan
+foreach ($Tool in @("aws", "helm", "kubectl")) {
+    if (-not (Get-Command $Tool -ErrorAction SilentlyContinue)) {
+        Write-Error "Prerequisite tool missing from PATH: $Tool"
+        exit
+    }
+}
+Write-Host "✓ All deployment tools found." -ForegroundColor Green
+
+##################################
+# --- STEP 2: CREATING ISOLATED CONTEXT ---
+##################################
+Write-Host " STEP 2: CREATING ISOLATED CONTEXT " -ForegroundColor Cyan
+
+$TempKubeConfig = Join-Path $CurrentDir "kubeconfig-$ClusterName.tmp"
+if (Test-Path $TempKubeConfig) { Remove-Item -Force $TempKubeConfig | Out-Null }
+
+$env:KUBECONFIG = $TempKubeConfig
+aws eks update-kubeconfig --region $Region --name $ClusterName
+
+if ($LASTEXITCODE -ne 0) { Write-Error "Failed to connect to EKS."; exit }
+
+##################################
+# --- STEP 3: RUNNING INSTALLATIONS ---
+##################################
+Write-Host " STEP 3: RUNNING INSTALLATIONS " -ForegroundColor Cyan
+
+try {
+    foreach ($Addon in $Addons) {
+        # --- NEW STEP: EVALUATE ENABLED STATUS ---
+        if ($Addon.Enabled -eq $false) {
+            Write-Host "Skipping Addon (Disabled in config): $($Addon.ChartName)" -ForegroundColor Gray
+            Write-Output ""
+            continue # Safe escape jump out of loop block container iteration
+        }
+
+        Write-Host "Deploying Addon: $($Addon.ChartName)" -ForegroundColor Yellow
+        
+        $LocalChartPath = Join-Path $ChartsDir $Addon.ChartName
+        $ExternalValuesPath = Join-Path $OverridesDir $Addon.ValuesFile
+
+        if (-not (Test-Path $LocalChartPath) -or -not (Test-Path $ExternalValuesPath)) {
+            Write-Error "Required local deployment assets are missing."; exit
+        }
+
+        # --- EKS POD IDENTITY MAPPER ---
+        if ($null -ne $Addon.PodIdentity) {
+            Write-Host "Reconciling EKS Pod Identity Association..." -ForegroundColor Gray
+            $ExistingAssoc = aws eks list-pod-identity-associations `
+                --cluster-name $ClusterName `
+                --region $Region `
+                --query "associations[?namespace=='$($Addon.Namespace)' && serviceAccount=='$($Addon.PodIdentity.ServiceAccount)'].associationId" `
+                --output text 2>$null
+
+            if ([string]::IsNullOrEmpty($ExistingAssoc) -or $ExistingAssoc -eq "None") {
+                Write-Host "Creating new Pod Identity Association..." -ForegroundColor Gray
+                aws eks create-pod-identity-association `
+                    --cluster-name $ClusterName `
+                    --region $Region `
+                    --namespace $Addon.Namespace `
+                    --service-account $Addon.PodIdentity.ServiceAccount `
+                    --role-arn $Addon.PodIdentity.RoleArn | Out-Null
+            } else {
+                Write-Host "✓ Association exists ($ExistingAssoc)." -ForegroundColor Green
+            }
+        }
+
+        # --- DYNAMIC MULTI-CLUSTER SET ARGUMENTS ---
+        $HelmArgs = @("upgrade", "--install", $Addon.ChartName, $LocalChartPath, "--namespace", $Addon.Namespace, "--create-namespace", "--values", $ExternalValuesPath)
+        
+        if ($Addon.ChartName -eq "aws-load-balancer-controller") {
+            $HelmArgs += @("--set", "clusterName=$ClusterName")
+        }
+        elseif ($Addon.ChartName -eq "karpenter") {
+            $HelmArgs += @("--set", "settings.clusterName=$ClusterName")
+        }
+
+        # --- HELM UPGRADE ENGINE ---
+        Write-Host "Running local helm release installer..." -ForegroundColor Gray
+        & helm $HelmArgs
+
+        if ($LASTEXITCODE -ne 0) { Write-Error "Helm upgrade failed."; exit }
+
+        # --- ROLLOUT STATUS EVALUATION ---
+        Write-Host "Checking target workload rollout verifications..." -ForegroundColor Gray
+        foreach ($Target in $Addon.RolloutTargets) {
+            $ResourceString = "$($Target.Type.ToLower())/$($Target.Name)"
+            kubectl rollout status $ResourceString --namespace $Addon.Namespace --timeout=300s
+            if ($LASTEXITCODE -ne 0) { Write-Error "Rollout timed out or crashed on target: $ResourceString."; exit }
+        }
+        Write-Host "✓ SUCCESS: Addon '$($Addon.ChartName)' is fully active!" -ForegroundColor Green
+        Write-Output "" 
+    }
+    Write-Host "All enabled addons successfully deployed." -ForegroundColor Green
+}
+finally {
+    if (Test-Path $TempKubeConfig) { Remove-Item -Force $TempKubeConfig | Out-Null }
+}
