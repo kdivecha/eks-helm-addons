@@ -18,7 +18,7 @@
   RepoUrl: https://aws.github.io/eks-charts
   ChartVersion: 1.7.1
   Namespace: kube-system
-  ValuesFile: lb-controller.yaml
+  ValuesFile: load-balancer-controller.yaml
   PodIdentity:
     RoleArn: arn:aws:iam::123456789012:role/AWSLoadBalancerControllerPodIdentityRole
     ServiceAccount: aws-load-balancer-controller
@@ -44,7 +44,7 @@
   RepoUrl: https://kubernetes-sigs.github.io/aws-ebs-csi-driver
   ChartVersion: 2.64.0
   Namespace: kube-system
-  ValuesFile: aws-ebs-csi-driver.yaml
+  ValuesFile: ebs-csi-driver.yaml
   PodIdentity:
     RoleArn: arn:aws:iam::123456789012:role/AWSEBSCSIDriverPodIdentityRole
     ServiceAccount: ebs-csi-controller-sa

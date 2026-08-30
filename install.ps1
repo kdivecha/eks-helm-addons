@@ -55,7 +55,7 @@ Write-Host " STEP 3: RUNNING INSTALLATIONS " -ForegroundColor Cyan
 
 try {
     foreach ($Addon in $Addons) {
-        # --- NEW STEP: EVALUATE ENABLED STATUS ---
+        # --- STEP: EVALUATE ENABLED STATUS ---
         if ($Addon.Enabled -eq $false) {
             Write-Host "Skipping Addon (Disabled in config): $($Addon.ChartName)" -ForegroundColor Gray
             Write-Output ""
