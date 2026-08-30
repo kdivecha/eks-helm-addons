@@ -1,21 +1,22 @@
 node:
-  extraVolumeMounts:
-  - name: custom-ca-bundle
-    mountPath: /host-ca
-    readOnly: true
-  extraVolumes:
+  volumes:
   - name: custom-ca-bundle
     hostPath:
       type: Directory
       path: /etc/pki/tls/certs
+  volumeMounts:
+  - name: custom-ca-bundle
+    mountPath: /host-ca
+    readOnly: true
   env:
   - name: AWS_CA_BUNDLE
     value: /host-ca/tls-ca-bundle.pem
 controller:
-  extraVolumeMounts:
+  volumes:
   - name: custom-ca-bundle
-    mountPath: /host-ca
-    readOnly: true
+    hostPath:
+      type: Directory
+      path: /etc/pki/tls/certs
   resources:
     limits:
       cpu: 200m
@@ -23,11 +24,10 @@ controller:
     requests:
       cpu: 100m
       memory: 128Mi
-  extraVolumes:
+  volumeMounts:
   - name: custom-ca-bundle
-    hostPath:
-      type: Directory
-      path: /etc/pki/tls/certs
+    mountPath: /host-ca
+    readOnly: true
   env:
   - name: AWS_CA_BUNDLE
     value: /host-ca/tls-ca-bundle.pem

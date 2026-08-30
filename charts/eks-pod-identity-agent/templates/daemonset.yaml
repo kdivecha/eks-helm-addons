@@ -32,9 +32,6 @@ spec:
     spec:
       automountServiceAccountToken: true
       priorityClassName: {{ $top.Values.priorityClassName }}
-      {{- with (include "eks-pod-identity-agent.serviceAccountName" $top) }}
-      serviceAccountName: {{ . }}
-      {{- end }}
       hostNetwork: true
       terminationGracePeriodSeconds: 30
       {{- with $top.Values.tolerations }}

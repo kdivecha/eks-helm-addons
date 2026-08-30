@@ -8,8 +8,8 @@ if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
     exit
 }
 
-$CurrentDir = Get-Location
-$ConfigFile = Join-Path $CurrentDir "addons.yaml"
+$CurrentDir = $PSScriptRoot
+$ConfigFile = Join-Path $CurrentDir "inventory.yaml"
 
 if (-not (Test-Path $ConfigFile)) {
     Write-Error "Configuration data file not found at: $ConfigFile"
@@ -71,25 +71,36 @@ foreach ($Addon in $Addons) {
     }
 
     $LocalChartPath = Join-Path $ChartsDir $Addon.ChartName
+    $VendoredRefPath = Join-Path $LocalChartPath ".vendor-ref"
     $ShouldDownload = $true
 
     if (Test-Path $LocalChartPath) {
         $ChartYamlPath = Join-Path $LocalChartPath "Chart.yaml"
+        $LocalChartVersion = "unknown"
         if (Test-Path $ChartYamlPath) {
             $LocalChartData = Get-Content -Raw -Path $ChartYamlPath | ConvertFrom-Yaml
-            if ($LocalChartData.version -eq $Addon.ChartVersion -or $Addon.IsGitRepoChart) {
-                Write-Host " -> Local chart version ($($LocalChartData.version)) matches. Skipping download." -ForegroundColor Green
+            $LocalChartVersion = $LocalChartData.version
+        }
+
+        if ($Addon.IsGitRepoChart) {
+            $ExistingVendorReference = if (Test-Path $VendoredRefPath) { (Get-Content -Raw -Path $VendoredRefPath).Trim() } else { "" }
+            if ($ExistingVendorReference -like "$($Addon.ChartVersion)@*") {
+                Write-Host " -> Local Git chart reference ($ExistingVendorReference) matches. Skipping download." -ForegroundColor Green
                 $ShouldDownload = $false
-            } else {
-                $BackupDirName = "$($Addon.ChartName)-$($LocalChartData.version)"
-                $BackupDirPath = Join-Path $ChartsDir $BackupDirName
-                if (Test-Path $BackupDirPath) { Remove-Item -Recurse -Force $BackupDirPath | Out-Null }
-                
-                Rename-Item -Path $LocalChartPath -NewName $BackupDirName -Force
-                Write-Host " -> Version mismatch. Archived old copy to charts/$BackupDirName" -ForegroundColor Gray
             }
-        } else {
-            Remove-Item -Recurse -Force $LocalChartPath | Out-Null
+        }
+        elseif ($LocalChartVersion -eq $Addon.ChartVersion) {
+            Write-Host " -> Local chart version ($LocalChartVersion) matches. Skipping download." -ForegroundColor Green
+            $ShouldDownload = $false
+        }
+
+        if ($ShouldDownload) {
+            $BackupDirName = "$($Addon.ChartName)-$LocalChartVersion"
+            $BackupDirPath = Join-Path $ChartsDir $BackupDirName
+            if (Test-Path $BackupDirPath) { Remove-Item -Recurse -Force $BackupDirPath | Out-Null }
+
+            Rename-Item -Path $LocalChartPath -NewName $BackupDirName -Force
+            Write-Host " -> Version mismatch. Archived old copy to charts/$BackupDirName" -ForegroundColor Gray
         }
     }
 
@@ -99,9 +110,16 @@ foreach ($Addon in $Addons) {
             $TempGitPath = Join-Path $ChartsDir "temp-git-clone"
             if (Test-Path $TempGitPath) { Remove-Item -Recurse -Force $TempGitPath | Out-Null }
             
-            git clone --depth 1 $Addon.RepoUrl $TempGitPath | Out-Null
+            git clone --depth 1 --branch $Addon.ChartVersion $Addon.RepoUrl $TempGitPath | Out-Null
+            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to clone Git chart reference: $($Addon.ChartVersion)"; exit }
+
+            $GitCommit = (git -C $TempGitPath rev-parse HEAD).Trim()
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($GitCommit)) { Write-Error "Failed to resolve Git chart commit for: $($Addon.ChartVersion)"; exit }
+
             $GitChartSource = Join-Path $TempGitPath "charts/eks-pod-identity-agent"
+            if (-not (Test-Path $GitChartSource)) { Write-Error "Git chart source not found at: $GitChartSource"; exit }
             Move-Item -Path $GitChartSource -Destination $ChartsDir -Force
+            Set-Content -Path $VendoredRefPath -Value "$($Addon.ChartVersion)@$GitCommit" -NoNewline
             Remove-Item -Recurse -Force $TempGitPath | Out-Null
         }
         elseif ($Addon.IsOCI) {
@@ -115,6 +133,11 @@ foreach ($Addon in $Addons) {
         if ($LASTEXITCODE -ne 0) { Write-Error "Failed to draw down chart archive."; exit }
         Write-Host " -> ✓ Staging successful." -ForegroundColor Green
     }
+
+    Write-Host " -> Validating chart and override values..." -ForegroundColor Gray
+    & helm lint $LocalChartPath --values $ValuesFilePath
+    if ($LASTEXITCODE -ne 0) { Write-Error "Helm lint failed for addon: $($Addon.ChartName)"; exit }
+
     Write-Output "" 
 }
 Write-Host "Staging complete: Assets ready." -ForegroundColor Green

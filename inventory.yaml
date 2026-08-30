@@ -1,7 +1,7 @@
 - ChartName: eks-pod-identity-agent
   Enabled: true
   RepoUrl: https://github.com/aws/eks-pod-identity-agent
-  ChartVersion: main
+  ChartVersion: v0.2.1
   Namespace: kube-system
   ValuesFile: pod-identity-agent.yaml
   IsGitRepoChart: true
@@ -61,10 +61,10 @@
       env:
         - name: AWS_CA_BUNDLE
           value: "/host-ca/tls-ca-bundle.pem"
-      extraVolumes:
+      volumes:
         - name: custom-ca-bundle
           hostPath: { path: "/etc/pki/tls/certs", type: Directory }
-      extraVolumeMounts:
+      volumeMounts:
         - name: custom-ca-bundle
           mountPath: "/host-ca"
           readOnly: true
@@ -72,10 +72,10 @@
       env:
         - name: AWS_CA_BUNDLE
           value: "/host-ca/tls-ca-bundle.pem"
-      extraVolumes:
+      volumes:
         - name: custom-ca-bundle
           hostPath: { path: "/etc/pki/tls/certs", type: Directory }
-      extraVolumeMounts:
+      volumeMounts:
         - name: custom-ca-bundle
           mountPath: "/host-ca"
           readOnly: true
@@ -111,6 +111,8 @@
         coresPerReplica: 256
         nodesPerReplica: 16
         min: 1
+    options:
+      target: deployment/coredns
 
 - ChartName: cert-manager
   Enabled: true
@@ -216,41 +218,52 @@
   ChartVersion: 6.55.0
   Namespace: monitoring
   ValuesFile: loki.yaml
+  PodIdentity:
+    RoleArn: arn:aws:iam::123456789012:role/LokiPodIdentityRole
+    ServiceAccount: loki
   RolloutTargets:
+    - Type: statefulset
+      Name: loki
     - Type: deployment
       Name: loki-gateway
-    - Type: statefulset
-      Name: loki-backend
-    - Type: statefulset
-      Name: loki-read
-    - Type: statefulset
-      Name: loki-write
   DefaultValues:
     loki:
+      storage:
+        bucketNames:
+          chunks: REPLACE_WITH_LOKI_S3_BUCKET
+          ruler: REPLACE_WITH_LOKI_S3_BUCKET
+      schemaConfig:
+        configs:
+          - from: "2024-04-01"
+            store: tsdb
+            object_store: s3
+            schema: v13
+            index:
+              prefix: loki_index_
+              period: 24h
+    deploymentMode: SingleBinary
+    serviceAccount:
+      name: loki
+    singleBinary:
+      replicas: 1
       resources:
         limits: { cpu: "500m", memory: "1Gi" }
         requests: { cpu: "250m", memory: "512Mi" }
-    deploymentMode: SimpleScalable
+      extraEnv:
+        - name: AWS_CA_BUNDLE
+          value: "/host-ca/tls-ca-bundle.pem"
+      extraVolumes:
+        - name: custom-ca-bundle
+          hostPath: { path: "/etc/pki/tls/certs" }
+      extraVolumeMounts:
+        - name: custom-ca-bundle
+          mountPath: "/host-ca"
     backend:
-      extraEnv:
-        - name: AWS_CA_BUNDLE
-          value: "/host-ca/tls-ca-bundle.pem"
-      extraVolumes:
-        - name: custom-ca-bundle
-          hostPath: { path: "/etc/pki/tls/certs" }
-      extraVolumeMounts:
-        - name: custom-ca-bundle
-          mountPath: "/host-ca"
+      replicas: 0
+    read:
+      replicas: 0
     write:
-      extraEnv:
-        - name: AWS_CA_BUNDLE
-          value: "/host-ca/tls-ca-bundle.pem"
-      extraVolumes:
-        - name: custom-ca-bundle
-          hostPath: { path: "/etc/pki/tls/certs" }
-      extraVolumeMounts:
-        - name: custom-ca-bundle
-          mountPath: "/host-ca"
+      replicas: 0
 
 - ChartName: promtail
   Enabled: true
@@ -305,6 +318,7 @@
         hostPath: { path: "/etc/pki/tls/certs", type: Directory }
 
 - ChartName: argo-cd
+  ReleaseName: argocd
   Enabled: true
   RepoUrl: https://argoproj.github.io/argo-helm
   ChartVersion: 10.4.1

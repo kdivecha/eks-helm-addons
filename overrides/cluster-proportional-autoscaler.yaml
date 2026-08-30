@@ -22,4 +22,6 @@ resources:
 env:
 - name: AWS_CA_BUNDLE
   value: /host-ca/tls-ca-bundle.pem
+options:
+  target: deployment/coredns
 

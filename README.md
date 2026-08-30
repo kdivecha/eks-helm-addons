@@ -8,7 +8,7 @@ This repository provides an automated, modular, data-driven workflow engine usin
 
 *   **Decoupled & Isolated Staging:** The staging layer relies exclusively on an internet connection and the `helm` and `git` command binaries. It operates independently of an active AWS session context footprint.
 *   **Structured Project Tree Workspace:** Extracted upstream raw charts are cleanly managed under an isolated `charts/` root folder. Custom configuration manifests are stored inside a dedicated `overrides/` folder.
-*   **Completely Data-Driven Property Templates:** Avoids messy embedded script configuration logic. The staging script parses data properties mapped natively under the `DefaultValues` configuration block inside `addons.yaml` and handles parsing tasks automatically.
+*   **Completely Data-Driven Property Templates:** Avoids messy embedded script configuration logic. The staging script parses data properties mapped natively under the `DefaultValues` configuration block inside `inventory.yaml` and handles parsing tasks automatically.
 *   **Secure Environment Isolation Guard:** Protects live systems by binding credentials strictly to a temporary process session profile (`$env:KUBECONFIG`). Accidental production data leaks or cross-contamination is functionally impossible.
 *   **Idempotency & Version Shifting Cache:** Reads your local configuration definitions dynamically. If versions match, downloading is safely bypassed. If version data changes, older directory trees are cleanly archived to `<chart-name>-<old-version>` to protect adjustments.
 *   **Dynamic Component Execution Toggles:** Features a built-in `Enabled: true/false` block. The script evaluates this flag smoothly to allow toggling entire sub-workloads on or off instantly without purging inventory entries.
@@ -20,8 +20,8 @@ This repository provides an automated, modular, data-driven workflow engine usin
 
 ```text
 📁 eks-helm-addons/
-├── 📄 addons.yaml        # Core data-driven configuration inventory index ledger
-├── 📄 stage.ps1          # Phase 1: Local chart asset staging and cache runner
+├── 📄 inventory.yaml     # Core data-driven configuration inventory index ledger
+├── 📄 vendor.ps1         # Phase 1: Local chart asset staging and cache runner
 ├── 📄 install.ps1        # Phase 2: Secure sequential sandboxed installer driver
 ├── 📁 charts/            # Subdirectory target folder where extracted Helm charts live
 │   ├── 📁 eks-pod-identity-agent/
@@ -53,9 +53,10 @@ Install-Module -Name powershell-yaml -Scope CurrentUser -Force
 
 ---
 
-## 📄 Inventory Registry Mapping (`addons.yaml`)
+## 📄 Inventory Registry Mapping (`inventory.yaml`)
 
 Define your targets, configurations, expected validation parameters, and Pod Identity rules here. Standard `# comments` are supported.
+Set an optional `ReleaseName` when the Helm release name should differ from the chart directory name; it otherwise defaults to `ChartName`.
 
 ```yaml
 - ChartName: aws-load-balancer-controller
@@ -93,15 +94,17 @@ Define your targets, configurations, expected validation parameters, and Pod Ide
 Run this execution layer to reconcile version data and sync remote configuration charts straight into your working flat layout folder. 
 
 ```powershell
-.\stage.ps1
+.\vendor.ps1
 ```
 
 ### Phase 2: Installing to Target EKS Cluster
 Run the driver file by passing the name of your target cluster as a positional argument. The tool isolates credentials automatically and updates configurations sequentially. Any component marked `Enabled: false` inside the inventory index will be skipped automatically.
 
 ```powershell
-.\install.ps1 my-production-cluster
+.\install.ps1 my-production-cluster -Profile admin
 ```
+
+`Profile` defaults to `admin`; the script exports it as `AWS_PROFILE` and uses the AWS Region configured in that CLI profile.
 
 ---
 
