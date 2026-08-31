@@ -281,6 +281,12 @@
                   storage: 10Gi
     grafana:
       adminUser: admin
+      additionalDataSources:
+        - name: Loki
+          type: loki
+          uid: loki
+          access: proxy
+          url: http://loki-gateway.monitoring.svc.cluster.local
       service:
         annotations:
           alb.ingress.kubernetes.io/backend-protocol: HTTP
@@ -381,6 +387,20 @@
     - Type: daemonset
       Name: promtail
   DefaultValues:
+    config:
+      snippets:
+        extraRelabelConfigs:
+          - action: replace
+            source_labels: [__tmp_controller_name]
+            target_label: workload
+          - action: replace
+            source_labels: [__meta_kubernetes_pod_controller_kind]
+            target_label: workload_kind
+          - action: replace
+            source_labels: [__meta_kubernetes_pod_controller_kind]
+            regex: ReplicaSet
+            replacement: Deployment
+            target_label: workload_kind
     resources:
       limits: { cpu: "200m", memory: "256Mi" }
       requests: { cpu: "100m", memory: "128Mi" }
@@ -399,7 +419,7 @@
   Enabled: true
   RepoUrl: https://nats-io.github.io/k8s/helm/charts
   ChartVersion: 2.12.4
-  Namespace: nats
+  Namespace: nats-system
   ValuesFile: nats.yaml
   RolloutTargets:
     - Type: statefulset

@@ -34,6 +34,12 @@ prometheus:
               storage: 10Gi
 grafana:
   adminUser: admin
+  additionalDataSources:
+  - name: Loki
+    type: loki
+    uid: loki
+    access: proxy
+    url: http://loki-gateway.monitoring.svc.cluster.local
   service:
     annotations:
       alb.ingress.kubernetes.io/backend-protocol: HTTP

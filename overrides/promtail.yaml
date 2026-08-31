@@ -17,4 +17,20 @@ extraVolumes:
 extraEnv:
 - name: AWS_CA_BUNDLE
   value: /host-ca/tls-ca-bundle.pem
-
+config:
+  snippets:
+    extraRelabelConfigs:
+    - action: replace
+      source_labels:
+      - __tmp_controller_name
+      target_label: workload
+    - action: replace
+      source_labels:
+      - __meta_kubernetes_pod_controller_kind
+      target_label: workload_kind
+    - action: replace
+      source_labels:
+      - __meta_kubernetes_pod_controller_kind
+      regex: ReplicaSet
+      replacement: Deployment
+      target_label: workload_kind

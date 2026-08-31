@@ -33,7 +33,9 @@ This repository provides an automated, modular, data-driven workflow engine usin
 │   └── ...
 ├── 📁 dashboards/        # Grafana dashboard ConfigMap manifests
 │   ├── 📄 cluster-overview.yaml
-│   └── 📄 nats-overview.yaml
+│   ├── 📄 loki-logs-overview.yaml
+│   ├── 📄 nats-overview.yaml
+│   └── 📄 namespace-overview.yaml
 └── 📁 infra-ingress/     # Shared internal ALB Ingress manifests
     ├── 📄 grafana.yaml
     └── 📄 argocd.yaml
