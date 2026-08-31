@@ -24,6 +24,7 @@ if (-not (Test-Path $ConfigFile)) {
 
 $ChartsDir = Join-Path $CurrentDir "charts"
 $OverridesDir = Join-Path $CurrentDir "overrides"
+$DashboardsDir = Join-Path $CurrentDir "dashboards"
 $Addons = Get-Content -Raw -Path $ConfigFile | ConvertFrom-Yaml
 
 ####################################################################
@@ -129,6 +130,17 @@ try {
             kubectl rollout status $ResourceString --namespace $Addon.Namespace --timeout=300s
             if ($LASTEXITCODE -ne 0) { Write-Error "Rollout timed out or crashed on target: $ResourceString."; exit }
         }
+
+        if ($Addon.ChartName -eq "kube-prometheus-stack") {
+            if (-not (Test-Path -Path $DashboardsDir -PathType Container)) {
+                Write-Error "Grafana dashboard directory not found: $DashboardsDir"; exit
+            }
+
+            Write-Host "Applying Grafana dashboard ConfigMaps..." -ForegroundColor Gray
+            kubectl apply --filename $DashboardsDir
+            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply Grafana dashboard ConfigMaps."; exit }
+        }
+
         Write-Host "✓ SUCCESS: Addon '$($Addon.ChartName)' is fully active!" -ForegroundColor Green
         Write-Output "" 
     }
