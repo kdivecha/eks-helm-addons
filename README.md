@@ -21,8 +21,8 @@ This repository provides an automated, modular, data-driven workflow engine usin
 ```text
 📁 eks-helm-addons/
 ├── 📄 inventory.yaml     # Core data-driven configuration inventory index ledger
-├── 📄 vendor.ps1         # Phase 1: Local chart asset staging and cache runner
-├── 📄 install.ps1        # Phase 2: Secure sequential sandboxed installer driver
+├── 📄 vendor-charts.ps1  # Phase 1: Local chart asset staging and cache runner
+├── 📄 install-charts.ps1 # Phase 2: Secure sequential sandboxed installer driver
 ├── 📁 charts/            # Subdirectory target folder where extracted Helm charts live
 │   ├── 📁 eks-pod-identity-agent/
 │   ├── 📁 aws-load-balancer-controller/
@@ -106,14 +106,14 @@ Set an optional `ReleaseName` when the Helm release name should differ from the 
 Run this execution layer to reconcile version data and sync remote configuration charts straight into your working flat layout folder. 
 
 ```powershell
-.\vendor.ps1
+.\vendor-charts.ps1
 ```
 
 ### Phase 2: Installing to Target EKS Cluster
 Run the driver file by passing the name of your target cluster as a positional argument. The tool isolates credentials automatically and updates configurations sequentially. Any component marked `Enabled: false` inside the inventory index will be skipped automatically.
 
 ```powershell
-.\install.ps1 my-production-cluster -Profile admin
+.\install-charts.ps1 my-production-cluster -Profile admin
 ```
 
 `Profile` defaults to `admin`; the script exports it as `AWS_PROFILE` and uses the AWS Region configured in that CLI profile.
@@ -130,7 +130,7 @@ The script creates missing roles, updates the Pod Identity trust policy on exist
 
 ### Grafana Dashboard ConfigMaps
 
-The `dashboards/` directory contains Kubernetes YAML ConfigMaps for Grafana dashboards. After the enabled `kube-prometheus-stack` add-on and Grafana finish rolling out, `install.ps1` automatically runs `kubectl apply --filename dashboards/` using its isolated cluster context.
+The `dashboards/` directory contains Kubernetes YAML ConfigMaps for Grafana dashboards. After the enabled `kube-prometheus-stack` add-on and Grafana finish rolling out, `install-charts.ps1` automatically runs `kubectl apply --filename dashboards/` using its isolated cluster context.
 
 Each manifest must use the following label and target the `monitoring` namespace so the Grafana dashboard sidecar discovers it:
 
@@ -147,7 +147,7 @@ The ConfigMap manifests are YAML. Grafana dashboard models are embedded as JSON 
 
 `infra-ingress/grafana.yaml` and `infra-ingress/argocd.yaml` create the shared internal ALB routes for Grafana and Argo CD. Kubernetes Ingresses cannot reference Services in another namespace, so each application has a namespace-local Ingress; the shared `alb.ingress.kubernetes.io/group.name: infra` annotation makes AWS Load Balancer Controller serve both from one ALB.
 
-`install.ps1` applies Grafana's Ingress after kube-prometheus-stack rolls out. It applies Argo CD's Ingress only after Argo CD rolls out, so Grafana remains available when Argo CD is disabled. Before running it, replace these placeholders:
+`install-charts.ps1` applies Grafana's Ingress after kube-prometheus-stack rolls out. It applies Argo CD's Ingress only after Argo CD rolls out, so Grafana remains available when Argo CD is disabled. Before running it, replace these placeholders:
 
 * `REPLACE_WITH_INFRA_ACM_CERTIFICATE_ARN` with the ACM certificate ARN for the two hostnames.
 * `REPLACE_WITH_ROUTE53_DOMAIN` with your internal Route 53 zone, for example `corp.example.com`.
