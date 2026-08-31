@@ -27,10 +27,13 @@ This repository provides an automated, modular, data-driven workflow engine usin
 │   ├── 📁 eks-pod-identity-agent/
 │   ├── 📁 aws-load-balancer-controller/
 │   └── ...
-└── 📁 overrides/         # Subdirectory target folder where value configuration manifests live
-    ├── 📄 pod-identity-agent.yaml
-    ├── 📄 lb-controller.yaml
-    └── ...
+├── 📁 overrides/         # Subdirectory target folder where value configuration manifests live
+│   ├── 📄 pod-identity-agent.yaml
+│   ├── 📄 lb-controller.yaml
+│   └── ...
+└── 📁 dashboards/        # Grafana dashboard ConfigMap manifests
+    ├── 📄 cluster-overview.yaml
+    └── 📄 nats-overview.yaml
 ```
 
 ---
@@ -105,6 +108,21 @@ Run the driver file by passing the name of your target cluster as a positional a
 ```
 
 `Profile` defaults to `admin`; the script exports it as `AWS_PROFILE` and uses the AWS Region configured in that CLI profile.
+
+### Grafana Dashboard ConfigMaps
+
+The `dashboards/` directory contains Kubernetes YAML ConfigMaps for Grafana dashboards. After the enabled `kube-prometheus-stack` add-on and Grafana finish rolling out, `install.ps1` automatically runs `kubectl apply --filename dashboards/` using its isolated cluster context.
+
+Each manifest must use the following label and target the `monitoring` namespace so the Grafana dashboard sidecar discovers it:
+
+```yaml
+metadata:
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+```
+
+The ConfigMap manifests are YAML. Grafana dashboard models are embedded as JSON strings in the ConfigMap `data` field because Grafana's dashboard provisioning format requires JSON. Add new dashboard ConfigMaps to `dashboards/`; they are included on the next installer run.
 
 ---
 
