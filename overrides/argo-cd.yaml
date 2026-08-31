@@ -2,6 +2,13 @@ global:
   logging:
     level: info
 server:
+  service:
+    annotations:
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
+      alb.ingress.kubernetes.io/backend-protocol-version: HTTP2
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+      alb.ingress.kubernetes.io/healthcheck-path: /healthz
+      alb.ingress.kubernetes.io/success-codes: "200"
   volumes:
   - name: custom-ca-bundle
     hostPath:
@@ -38,4 +45,3 @@ repoServer:
   env:
   - name: AWS_CA_BUNDLE
     value: /host-ca/tls-ca-bundle.pem
-

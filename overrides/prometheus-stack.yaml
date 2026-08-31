@@ -34,6 +34,11 @@ prometheus:
               storage: 10Gi
 grafana:
   adminUser: admin
+  service:
+    annotations:
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+      alb.ingress.kubernetes.io/healthcheck-path: /api/health
+      alb.ingress.kubernetes.io/success-codes: "200"
   resources:
     limits:
       cpu: 100m

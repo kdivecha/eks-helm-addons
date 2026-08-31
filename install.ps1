@@ -25,6 +25,9 @@ if (-not (Test-Path $ConfigFile)) {
 $ChartsDir = Join-Path $CurrentDir "charts"
 $OverridesDir = Join-Path $CurrentDir "overrides"
 $DashboardsDir = Join-Path $CurrentDir "dashboards"
+$InfraIngressDir = Join-Path $CurrentDir "infra-ingress"
+$GrafanaIngressManifest = Join-Path $InfraIngressDir "grafana.yaml"
+$ArgoCDIngressManifest = Join-Path $InfraIngressDir "argocd.yaml"
 $Addons = Get-Content -Raw -Path $ConfigFile | ConvertFrom-Yaml
 
 ####################################################################
@@ -139,6 +142,24 @@ try {
             Write-Host "Applying Grafana dashboard ConfigMaps..." -ForegroundColor Gray
             kubectl apply --filename $DashboardsDir
             if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply Grafana dashboard ConfigMaps."; exit }
+
+            if (-not (Test-Path -Path $GrafanaIngressManifest -PathType Leaf)) {
+                Write-Error "Grafana ingress manifest not found: $GrafanaIngressManifest"; exit
+            }
+
+            Write-Host "Applying Grafana infrastructure ingress..." -ForegroundColor Gray
+            kubectl apply --filename $GrafanaIngressManifest
+            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply Grafana infrastructure ingress."; exit }
+        }
+
+        if ($Addon.ChartName -eq "argo-cd") {
+            if (-not (Test-Path -Path $ArgoCDIngressManifest -PathType Leaf)) {
+                Write-Error "Argo CD ingress manifest not found: $ArgoCDIngressManifest"; exit
+            }
+
+            Write-Host "Applying Argo CD infrastructure ingress..." -ForegroundColor Gray
+            kubectl apply --filename $ArgoCDIngressManifest
+            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply Argo CD infrastructure ingress."; exit }
         }
 
         Write-Host "✓ SUCCESS: Addon '$($Addon.ChartName)' is fully active!" -ForegroundColor Green

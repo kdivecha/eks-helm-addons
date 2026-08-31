@@ -31,9 +31,12 @@ This repository provides an automated, modular, data-driven workflow engine usin
 │   ├── 📄 pod-identity-agent.yaml
 │   ├── 📄 lb-controller.yaml
 │   └── ...
-└── 📁 dashboards/        # Grafana dashboard ConfigMap manifests
-    ├── 📄 cluster-overview.yaml
-    └── 📄 nats-overview.yaml
+├── 📁 dashboards/        # Grafana dashboard ConfigMap manifests
+│   ├── 📄 cluster-overview.yaml
+│   └── 📄 nats-overview.yaml
+└── 📁 infra-ingress/     # Shared internal ALB Ingress manifests
+    ├── 📄 grafana.yaml
+    └── 📄 argocd.yaml
 ```
 
 ---
@@ -123,6 +126,17 @@ metadata:
 ```
 
 The ConfigMap manifests are YAML. Grafana dashboard models are embedded as JSON strings in the ConfigMap `data` field because Grafana's dashboard provisioning format requires JSON. Add new dashboard ConfigMaps to `dashboards/`; they are included on the next installer run.
+
+### Infrastructure Ingress
+
+`infra-ingress/grafana.yaml` and `infra-ingress/argocd.yaml` create the shared internal ALB routes for Grafana and Argo CD. Kubernetes Ingresses cannot reference Services in another namespace, so each application has a namespace-local Ingress; the shared `alb.ingress.kubernetes.io/group.name: infra` annotation makes AWS Load Balancer Controller serve both from one ALB.
+
+`install.ps1` applies Grafana's Ingress after kube-prometheus-stack rolls out. It applies Argo CD's Ingress only after Argo CD rolls out, so Grafana remains available when Argo CD is disabled. Before running it, replace these placeholders:
+
+* `REPLACE_WITH_INFRA_ACM_CERTIFICATE_ARN` with the ACM certificate ARN for the two hostnames.
+* `REPLACE_WITH_ROUTE53_DOMAIN` with your internal Route 53 zone, for example `corp.example.com`.
+
+The manifests create `grafana.<domain>` and `argocd.<domain>` records through ExternalDNS, use an internal ALB with HTTP on port 80 redirected to HTTPS on port 443, and preserve Argo CD HTTP/2 support for CLI and API traffic. Any unmatched hostname on the ALB falls back to Grafana after the explicit Grafana and Argo CD host rules.
 
 ---
 

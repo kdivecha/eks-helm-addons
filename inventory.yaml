@@ -281,6 +281,11 @@
                   storage: 10Gi
     grafana:
       adminUser: admin
+      service:
+        annotations:
+          alb.ingress.kubernetes.io/backend-protocol: HTTP
+          alb.ingress.kubernetes.io/healthcheck-path: /api/health
+          alb.ingress.kubernetes.io/success-codes: "200"
       resources:
         limits: { cpu: "100m", memory: "128Mi" }
         requests: { cpu: "50m", memory: "64Mi" }
@@ -446,6 +451,13 @@
     global:
       logging: { level: info }
     server:
+      service:
+        annotations:
+          alb.ingress.kubernetes.io/backend-protocol: HTTPS
+          alb.ingress.kubernetes.io/backend-protocol-version: HTTP2
+          alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+          alb.ingress.kubernetes.io/healthcheck-path: /healthz
+          alb.ingress.kubernetes.io/success-codes: "200"
       resources:
         limits: { cpu: "500m", memory: "512Mi" }
         requests: { cpu: "125m", memory: "256Mi" }
