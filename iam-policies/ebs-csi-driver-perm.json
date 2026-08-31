@@ -1,0 +1,59 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowDescribe",
+      "Effect": "Allow",
+      "Action": ["ec2:DescribeAvailabilityZones", "ec2:DescribeInstances", "ec2:DescribeInstanceTypes", "ec2:DescribeSnapshots", "ec2:DescribeTags", "ec2:DescribeVolumes", "ec2:DescribeVolumesModifications", "ec2:DescribeVolumeStatus"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowVolumeAndSnapshotLifecycle",
+      "Effect": "Allow",
+      "Action": ["ec2:CreateSnapshot", "ec2:CopyVolumes", "ec2:ModifyVolume", "ec2:AttachVolume", "ec2:DetachVolume", "ec2:CreateVolume", "ec2:EnableFastSnapshotRestores"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowResourceTagging",
+      "Effect": "Allow",
+      "Action": ["ec2:CreateTags", "ec2:DeleteTags"],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowCSITaggedResourceDeletion",
+      "Effect": "Allow",
+      "Action": ["ec2:DeleteVolume", "ec2:DeleteSnapshot", "ec2:LockSnapshot"],
+      "Resource": "*",
+      "Condition": { "StringLike": {
+        "ec2:ResourceTag/ebs.csi.aws.com/cluster": "true"
+      }}
+    },
+    {
+      "Sid": "AllowDeleteCSIVolumesByName",
+      "Effect": "Allow",
+      "Action": "ec2:DeleteVolume",
+      "Resource": "*",
+      "Condition": { "StringLike": {
+        "ec2:ResourceTag/CSIVolumeName": "*"
+      }}
+    },
+    {
+      "Sid": "AllowDeleteCSIVolumesByPVC",
+      "Effect": "Allow",
+      "Action": "ec2:DeleteVolume",
+      "Resource": "*",
+      "Condition": { "StringLike": {
+        "ec2:ResourceTag/kubernetes.io/created-for/pvc/name": "*"
+      }}
+    },
+    {
+      "Sid": "AllowDeleteCSISnapshotsByName",
+      "Effect": "Allow",
+      "Action": ["ec2:DeleteSnapshot", "ec2:LockSnapshot"],
+      "Resource": "*",
+      "Condition": { "StringLike": {
+        "ec2:ResourceTag/CSIVolumeSnapshotName": "*"
+      }}
+    }
+  ]
+}

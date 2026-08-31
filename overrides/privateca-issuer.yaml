@@ -1,0 +1,25 @@
+serviceAccount:
+  create: true
+  name: aws-privateca-issuer
+approverRole:
+  enabled: true
+  serviceAccountName: cert-manager
+  namespace: cert-manager
+resources:
+  limits:
+    cpu: 50m
+    memory: 64Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+env:
+  AWS_CA_BUNDLE: /host-ca/tls-ca-bundle.pem
+volumes:
+- name: custom-ca-bundle
+  hostPath:
+    path: /etc/pki/tls/certs
+    type: Directory
+volumeMounts:
+- name: custom-ca-bundle
+  mountPath: /host-ca
+  readOnly: true

@@ -21,4 +21,57 @@ prometheus:
       env:
       - name: AWS_CA_BUNDLE
         value: /host-ca/tls-ca-bundle.pem
-
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+grafana:
+  adminUser: admin
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  persistence:
+    enabled: true
+    storageClassName: gp3
+    accessModes:
+    - ReadWriteOnce
+    size: 10Gi
+  env:
+    AWS_CA_BUNDLE: /host-ca/tls-ca-bundle.pem
+  extraVolumes:
+  - name: custom-ca-bundle
+    hostPath:
+      path: /etc/pki/tls/certs
+      type: Directory
+  extraVolumeMounts:
+  - name: custom-ca-bundle
+    mountPath: /host-ca
+    readOnly: true
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      limits:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi

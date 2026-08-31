@@ -1,3 +1,7 @@
+installCRDs: true
+serviceAccount:
+  create: true
+  name: cert-manager
 webhook:
   resources:
     limits:
@@ -29,4 +33,3 @@ volumes:
   hostPath:
     type: Directory
     path: /etc/pki/tls/certs
-

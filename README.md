@@ -66,7 +66,7 @@ Set an optional `ReleaseName` when the Helm release name should differ from the 
   Namespace: kube-system
   ValuesFile: lb-controller.yaml
   PodIdentity:
-    RoleArn: arn:aws:iam::123456789012:role/AWSLoadBalancerControllerPodIdentityRole
+    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/AWSLoadBalancerControllerPodIdentityRole
     ServiceAccount: aws-load-balancer-controller
   RolloutTargets:
     - Type: deployment

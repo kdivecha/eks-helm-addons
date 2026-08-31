@@ -1,0 +1,12 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Sid": "AllowLokiObjectStorage",
+    "Effect": "Allow",
+    "Action": ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+    "Resource": [
+      "arn:REPLACE_WITH_AWS_PARTITION:s3:::REPLACE_WITH_LOKI_S3_BUCKET",
+      "arn:REPLACE_WITH_AWS_PARTITION:s3:::REPLACE_WITH_LOKI_S3_BUCKET/*"
+    ]
+  }]
+}

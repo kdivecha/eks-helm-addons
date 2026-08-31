@@ -3,12 +3,16 @@
   RepoUrl: https://github.com/aws/eks-pod-identity-agent
   ChartVersion: v0.2.1
   Namespace: kube-system
-  ValuesFile: pod-identity-agent.yaml
+  ValuesFile: pod-identity.yaml
   IsGitRepoChart: true
   RolloutTargets:
     - Type: daemonset
       Name: eks-pod-identity-agent
   DefaultValues:
+    installCRDs: true
+    serviceAccount:
+      create: true
+      name: cert-manager
     resources:
       limits: { cpu: "100m", memory: "128Mi" }
       requests: { cpu: "20m", memory: "40Mi" }
@@ -18,9 +22,9 @@
   RepoUrl: https://aws.github.io/eks-charts
   ChartVersion: 1.7.1
   Namespace: kube-system
-  ValuesFile: load-balancer-controller.yaml
+  ValuesFile: lb-controller.yaml
   PodIdentity:
-    RoleArn: arn:aws:iam::123456789012:role/AWSLoadBalancerControllerPodIdentityRole
+    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/AWSLoadBalancerControllerPodIdentityRole
     ServiceAccount: aws-load-balancer-controller
   RolloutTargets:
     - Type: deployment
@@ -46,7 +50,7 @@
   Namespace: kube-system
   ValuesFile: ebs-csi-driver.yaml
   PodIdentity:
-    RoleArn: arn:aws:iam::123456789012:role/AWSEBSCSIDriverPodIdentityRole
+    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/AWSEBSCSIDriverPodIdentityRole
     ServiceAccount: ebs-csi-controller-sa
   RolloutTargets:
     - Type: deployment
@@ -54,6 +58,18 @@
     - Type: daemonset
       Name: ebs-csi-node
   DefaultValues:
+    defaultStorageClass:
+      enabled: false
+    storageClasses:
+      - name: gp3
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+        volumeBindingMode: WaitForFirstConsumer
+        allowVolumeExpansion: true
+        reclaimPolicy: Delete
+        parameters:
+          type: gp3
+          encrypted: "true"
     controller:
       resources:
         limits: { cpu: "200m", memory: "256Mi" }
@@ -85,10 +101,7 @@
   RepoUrl: https://kubernetes-sigs.github.io/cluster-proportional-autoscaler
   ChartVersion: 1.1.0
   Namespace: kube-system
-  ValuesFile: cluster-proportional-autoscaler.yaml
-  PodIdentity:
-    RoleArn: arn:aws:iam::123456789012:role/ClusterProportionalAutoscalerPodIdentityRole
-    ServiceAccount: cluster-proportional-autoscaler
+  ValuesFile: cpa.yaml
   RolloutTargets:
     - Type: deployment
       Name: cluster-proportional-autoscaler
@@ -120,9 +133,6 @@
   ChartVersion: v1.14.4
   Namespace: cert-manager
   ValuesFile: cert-manager.yaml
-  PodIdentity:
-    RoleArn: arn:aws:iam::123456789012:role/CertManagerPodIdentityRole
-    ServiceAccount: cert-manager
   RolloutTargets:
     - Type: deployment
       Name: cert-manager
@@ -160,12 +170,25 @@
   Namespace: kube-system
   ValuesFile: external-dns.yaml
   PodIdentity:
-    RoleArn: arn:aws:iam::123456789012:role/ExternalDNSPodIdentityRole
+    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/REPLACE_WITH_EXTERNAL_DNS_POD_IDENTITY_ROLE
     ServiceAccount: external-dns
   RolloutTargets:
     - Type: deployment
       Name: external-dns
   DefaultValues:
+    serviceAccount:
+      create: true
+      name: external-dns
+    provider:
+      name: aws
+    sources: [service, ingress]
+    policy: upsert-only
+    registry: txt
+    txtOwnerId: REPLACE_WITH_EXTERNAL_DNS_TXT_OWNER_ID
+    domainFilters: [REPLACE_WITH_ROUTE53_DOMAIN]
+    extraArgs:
+      - --aws-zone-type=private
+      - --zone-id-filter=REPLACE_WITH_ROUTE53_HOSTED_ZONE_ID
     resources:
       limits: { cpu: "100m", memory: "128Mi" }
       requests: { cpu: "50m", memory: "64Mi" }
@@ -176,6 +199,39 @@
       - name: custom-ca-bundle
         hostPath: { path: "/etc/pki/tls/certs", type: Directory }
     extraVolumeMounts:
+      - name: custom-ca-bundle
+        mountPath: "/host-ca"
+        readOnly: true
+
+- ChartName: aws-privateca-issuer
+  Enabled: false
+  RepoUrl: https://cert-manager.github.io/aws-privateca-issuer
+  ChartVersion: v1.9.1
+  Namespace: cert-manager
+  ValuesFile: privateca-issuer.yaml
+  PodIdentity:
+    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/REPLACE_WITH_AWS_PRIVATECA_ISSUER_POD_IDENTITY_ROLE
+    ServiceAccount: aws-privateca-issuer
+  RolloutTargets:
+    - Type: deployment
+      Name: aws-privateca-issuer
+  DefaultValues:
+    serviceAccount:
+      create: true
+      name: aws-privateca-issuer
+    approverRole:
+      enabled: true
+      serviceAccountName: cert-manager
+      namespace: cert-manager
+    resources:
+      limits: { cpu: "50m", memory: "64Mi" }
+      requests: { cpu: "50m", memory: "64Mi" }
+    env:
+      AWS_CA_BUNDLE: "/host-ca/tls-ca-bundle.pem"
+    volumes:
+      - name: custom-ca-bundle
+        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+    volumeMounts:
       - name: custom-ca-bundle
         mountPath: "/host-ca"
         readOnly: true
@@ -193,6 +249,8 @@
       Name: kube-prometheus-stack-grafana
     - Type: statefulset
       Name: prometheus-kube-prometheus-stack-prometheus
+    - Type: statefulset
+      Name: kube-prometheus-stack-alertmanager
   DefaultValues:
     prometheus:
       prometheusSpec:
@@ -211,6 +269,47 @@
         volumes:
           - name: custom-ca-bundle
             hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: gp3
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 10Gi
+    grafana:
+      adminUser: admin
+      resources:
+        limits: { cpu: "100m", memory: "128Mi" }
+        requests: { cpu: "50m", memory: "64Mi" }
+      persistence:
+        enabled: true
+        storageClassName: gp3
+        accessModes: ["ReadWriteOnce"]
+        size: 10Gi
+      env:
+        AWS_CA_BUNDLE: "/host-ca/tls-ca-bundle.pem"
+      extraVolumes:
+        - name: custom-ca-bundle
+          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      extraVolumeMounts:
+        - name: custom-ca-bundle
+          mountPath: "/host-ca"
+          readOnly: true
+    alertmanager:
+      enabled: true
+      alertmanagerSpec:
+        resources:
+          limits: { cpu: "100m", memory: "128Mi" }
+          requests: { cpu: "50m", memory: "64Mi" }
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: gp3
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 10Gi
 
 - ChartName: loki
   Enabled: true
@@ -219,7 +318,7 @@
   Namespace: monitoring
   ValuesFile: loki.yaml
   PodIdentity:
-    RoleArn: arn:aws:iam::123456789012:role/LokiPodIdentityRole
+    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/LokiPodIdentityRole
     ServiceAccount: loki
   RolloutTargets:
     - Type: statefulset
@@ -271,9 +370,6 @@
   ChartVersion: 6.17.1
   Namespace: logging
   ValuesFile: promtail.yaml
-  PodIdentity:
-    RoleArn: arn:aws:iam::123456789012:role/PromtailPodIdentityRole
-    ServiceAccount: promtail
   RolloutTargets:
     - Type: daemonset
       Name: promtail
@@ -302,6 +398,15 @@
     - Type: statefulset
       Name: nats
   DefaultValues:
+    config:
+      jetstream:
+        enabled: true
+        fileStore:
+          enabled: true
+          pvc:
+            enabled: true
+            storageClassName: gp3
+            size: 10Gi
     nats:
       resources:
         limits: { cpu: "500m", memory: "512Mi" }
@@ -324,9 +429,6 @@
   ChartVersion: 10.4.1
   Namespace: argocd
   ValuesFile: argo-cd.yaml
-  PodIdentity:
-    RoleArn: arn:aws:iam::123456789012:role/ArgoCDPodIdentityRole
-    ServiceAccount: argocd-application-controller
   RolloutTargets:
     - Type: deployment
       Name: argocd-server
@@ -371,7 +473,7 @@
   ValuesFile: karpenter.yaml
   IsOCI: true
   PodIdentity:
-    RoleArn: arn:aws:iam::123456789012:role/KarpenterPodIdentityRole
+    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/KarpenterPodIdentityRole
     ServiceAccount: karpenter
   RolloutTargets:
     - Type: deployment

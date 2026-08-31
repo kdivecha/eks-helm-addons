@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowRoute53RecordManagementInConfiguredZone",
+      "Effect": "Allow",
+      "Action": ["route53:ChangeResourceRecordSets", "route53:ListResourceRecordSets", "route53:ListTagsForResource"],
+      "Resource": "arn:REPLACE_WITH_AWS_PARTITION:route53:::hostedzone/REPLACE_WITH_ROUTE53_HOSTED_ZONE_ID"
+    },
+    {
+      "Sid": "AllowRoute53ZoneDiscovery",
+      "Effect": "Allow",
+      "Action": ["route53:ListHostedZones", "route53:ListHostedZonesByName"],
+      "Resource": "*"
+    }
+  ]
+}

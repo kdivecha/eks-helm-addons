@@ -1,0 +1,44 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowLoadBalancerDiscovery",
+      "Effect": "Allow",
+      "Action": [
+        "acm:DescribeCertificate", "acm:ListCertificates", "cognito-idp:DescribeUserPoolClient",
+        "ec2:DescribeAccountAttributes", "ec2:DescribeAddresses", "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeCoipPools", "ec2:DescribeInstances", "ec2:DescribeInternetGateways",
+        "ec2:DescribeNetworkInterfaces", "ec2:DescribeSecurityGroups", "ec2:DescribeSubnets",
+        "ec2:DescribeTags", "ec2:GetCoipPoolUsage", "ec2:GetSecurityGroupsForVpc",
+        "elasticloadbalancing:DescribeAccountLimits", "elasticloadbalancing:DescribeListenerCertificates",
+        "elasticloadbalancing:DescribeListeners", "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:DescribeLoadBalancers", "elasticloadbalancing:DescribeRules",
+        "elasticloadbalancing:DescribeSSLPolicies", "elasticloadbalancing:DescribeTags",
+        "elasticloadbalancing:DescribeTargetGroupAttributes", "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetHealth", "iam:GetServerCertificate", "iam:ListServerCertificates",
+        "shield:GetSubscriptionState", "shield:DescribeProtection", "waf-regional:GetWebACL",
+        "waf-regional:GetWebACLForResource", "wafv2:GetWebACL", "wafv2:GetWebACLForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowLoadBalancerReconciliation",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:AuthorizeSecurityGroupIngress", "ec2:CreateSecurityGroup", "ec2:CreateTags", "ec2:DeleteSecurityGroup",
+        "ec2:DeleteTags", "ec2:RevokeSecurityGroupIngress", "elasticloadbalancing:AddListenerCertificates",
+        "elasticloadbalancing:AddTags", "elasticloadbalancing:CreateListener", "elasticloadbalancing:CreateLoadBalancer",
+        "elasticloadbalancing:CreateRule", "elasticloadbalancing:CreateTargetGroup", "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:DeleteLoadBalancer", "elasticloadbalancing:DeleteRule", "elasticloadbalancing:DeleteTargetGroup",
+        "elasticloadbalancing:DeregisterTargets", "elasticloadbalancing:ModifyListener", "elasticloadbalancing:ModifyListenerAttributes",
+        "elasticloadbalancing:ModifyLoadBalancerAttributes", "elasticloadbalancing:ModifyRule", "elasticloadbalancing:ModifyTargetGroup",
+        "elasticloadbalancing:ModifyTargetGroupAttributes", "elasticloadbalancing:RegisterTargets", "elasticloadbalancing:RemoveListenerCertificates",
+        "elasticloadbalancing:RemoveTags", "elasticloadbalancing:SetIpAddressType", "elasticloadbalancing:SetSecurityGroups",
+        "elasticloadbalancing:SetSubnets", "elasticloadbalancing:SetWebAcl", "iam:CreateServiceLinkedRole",
+        "shield:CreateProtection", "shield:DeleteProtection", "waf-regional:AssociateWebACL",
+        "waf-regional:DisassociateWebACL", "wafv2:AssociateWebACL", "wafv2:DisassociateWebACL"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
