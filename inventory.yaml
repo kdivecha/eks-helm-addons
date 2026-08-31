@@ -34,13 +34,13 @@
       limits: { cpu: "200m", memory: "256Mi" }
       requests: { cpu: "100m", memory: "128Mi" }
     env:
-      AWS_CA_BUNDLE: "/host-ca/tls-ca-bundle.pem"
+      AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
     extraVolumes:
-      - name: custom-ca-bundle
-        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      - name: custom-ca
+        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
     extraVolumeMounts:
-      - name: custom-ca-bundle
-        mountPath: "/host-ca"
+      - name: custom-ca
+        mountPath: "/custom-ca"
         readOnly: true
 
 - ChartName: aws-ebs-csi-driver
@@ -76,24 +76,24 @@
         requests: { cpu: "100m", memory: "128Mi" }
       env:
         - name: AWS_CA_BUNDLE
-          value: "/host-ca/tls-ca-bundle.pem"
+          value: "/custom-ca/tls-ca-bundle.pem"
       volumes:
-        - name: custom-ca-bundle
-          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+        - name: custom-ca
+          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
       volumeMounts:
-        - name: custom-ca-bundle
-          mountPath: "/host-ca"
+        - name: custom-ca
+          mountPath: "/custom-ca"
           readOnly: true
     node:
       env:
         - name: AWS_CA_BUNDLE
-          value: "/host-ca/tls-ca-bundle.pem"
+          value: "/custom-ca/tls-ca-bundle.pem"
       volumes:
-        - name: custom-ca-bundle
-          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+        - name: custom-ca
+          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
       volumeMounts:
-        - name: custom-ca-bundle
-          mountPath: "/host-ca"
+        - name: custom-ca
+          mountPath: "/custom-ca"
           readOnly: true
 
 - ChartName: cluster-proportional-autoscaler
@@ -111,13 +111,13 @@
       requests: { cpu: "50m", memory: "64Mi" }
     env:
       - name: AWS_CA_BUNDLE
-        value: "/host-ca/tls-ca-bundle.pem"
+        value: "/custom-ca/tls-ca-bundle.pem"
     extraVolumes:
-      - name: custom-ca-bundle
-        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      - name: custom-ca
+        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
     extraVolumeMounts:
-      - name: custom-ca-bundle
-        mountPath: "/host-ca"
+      - name: custom-ca
+        mountPath: "/custom-ca"
         readOnly: true
     config:
       linear:
@@ -148,13 +148,13 @@
       - --issuer-ambient-credentials
     env:
       - name: AWS_CA_BUNDLE
-        value: "/host-ca/tls-ca-bundle.pem"
+        value: "/custom-ca/tls-ca-bundle.pem"
     volumes:
-      - name: custom-ca-bundle
-        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      - name: custom-ca
+        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
     volumeMounts:
-      - name: custom-ca-bundle
-        mountPath: "/host-ca"
+      - name: custom-ca
+        mountPath: "/custom-ca"
         readOnly: true
     cainjector:
       resources:
@@ -194,13 +194,13 @@
       requests: { cpu: "50m", memory: "64Mi" }
     env:
       - name: AWS_CA_BUNDLE
-        value: "/host-ca/tls-ca-bundle.pem"
+        value: "/custom-ca/tls-ca-bundle.pem"
     extraVolumes:
-      - name: custom-ca-bundle
-        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      - name: custom-ca
+        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
     extraVolumeMounts:
-      - name: custom-ca-bundle
-        mountPath: "/host-ca"
+      - name: custom-ca
+        mountPath: "/custom-ca"
         readOnly: true
 
 - ChartName: aws-privateca-issuer
@@ -224,16 +224,16 @@
       serviceAccountName: cert-manager
       namespace: cert-manager
     resources:
-      limits: { cpu: "50m", memory: "64Mi" }
+      limits: { cpu: "100m", memory: "128Mi" }
       requests: { cpu: "50m", memory: "64Mi" }
     env:
-      AWS_CA_BUNDLE: "/host-ca/tls-ca-bundle.pem"
+      AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
     volumes:
-      - name: custom-ca-bundle
-        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      - name: custom-ca
+        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
     volumeMounts:
-      - name: custom-ca-bundle
-        mountPath: "/host-ca"
+      - name: custom-ca
+        mountPath: "/custom-ca"
         readOnly: true
 
 - ChartName: kube-prometheus-stack
@@ -252,6 +252,8 @@
     - Type: statefulset
       Name: kube-prometheus-stack-alertmanager
   DefaultValues:
+    crds:
+      enabled: true
     prometheus:
       prometheusSpec:
         resources:
@@ -261,14 +263,14 @@
           - name: prometheus
             env:
               - name: AWS_CA_BUNDLE
-                value: "/host-ca/tls-ca-bundle.pem"
+                value: "/custom-ca/tls-ca-bundle.pem"
             volumeMounts:
-              - name: custom-ca-bundle
-                mountPath: "/host-ca"
+              - name: custom-ca
+                mountPath: "/custom-ca"
                 readOnly: true
         volumes:
-          - name: custom-ca-bundle
-            hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+          - name: custom-ca
+            hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
         storageSpec:
           volumeClaimTemplate:
             spec:
@@ -288,13 +290,13 @@
         accessModes: ["ReadWriteOnce"]
         size: 10Gi
       env:
-        AWS_CA_BUNDLE: "/host-ca/tls-ca-bundle.pem"
+        AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
       extraVolumes:
-        - name: custom-ca-bundle
-          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+        - name: custom-ca
+          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
       extraVolumeMounts:
-        - name: custom-ca-bundle
-          mountPath: "/host-ca"
+        - name: custom-ca
+          mountPath: "/custom-ca"
           readOnly: true
     alertmanager:
       enabled: true
@@ -350,13 +352,13 @@
         requests: { cpu: "250m", memory: "512Mi" }
       extraEnv:
         - name: AWS_CA_BUNDLE
-          value: "/host-ca/tls-ca-bundle.pem"
+          value: "/custom-ca/tls-ca-bundle.pem"
       extraVolumes:
-        - name: custom-ca-bundle
-          hostPath: { path: "/etc/pki/tls/certs" }
+        - name: custom-ca
+          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem" }
       extraVolumeMounts:
-        - name: custom-ca-bundle
-          mountPath: "/host-ca"
+        - name: custom-ca
+          mountPath: "/custom-ca"
     backend:
       replicas: 0
     read:
@@ -379,13 +381,13 @@
       requests: { cpu: "100m", memory: "128Mi" }
     extraEnv:
       - name: AWS_CA_BUNDLE
-        value: "/host-ca/tls-ca-bundle.pem"
+        value: "/custom-ca/tls-ca-bundle.pem"
     extraVolumes:
-      - name: custom-ca-bundle
-        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      - name: custom-ca
+        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
     extraVolumeMounts:
-      - name: custom-ca-bundle
-        mountPath: "/host-ca"
+      - name: custom-ca
+        mountPath: "/custom-ca"
         readOnly: true
 
 - ChartName: nats
@@ -399,6 +401,8 @@
       Name: nats
   DefaultValues:
     config:
+      monitor:
+        enabled: true
       jetstream:
         enabled: true
         fileStore:
@@ -407,24 +411,28 @@
             enabled: true
             storageClassName: gp3
             size: 10Gi
+    promExporter:
+      enabled: true
+      podMonitor:
+        enabled: true
     nats:
       resources:
         limits: { cpu: "500m", memory: "512Mi" }
         requests: { cpu: "250m", memory: "256Mi" }
     container:
       env:
-        AWS_CA_BUNDLE: "/host-ca/tls-ca-bundle.pem"
+        AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
       volumeMounts:
-        - name: custom-ca-bundle
-          mountPath: "/host-ca"
+        - name: custom-ca
+          mountPath: "/custom-ca"
           readOnly: true
     volumes:
-      - name: custom-ca-bundle
-        hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+      - name: custom-ca
+        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
 
 - ChartName: argo-cd
   ReleaseName: argocd
-  Enabled: true
+  Enabled: false
   RepoUrl: https://argoproj.github.io/argo-helm
   ChartVersion: 10.4.1
   Namespace: argocd
@@ -443,30 +451,30 @@
         requests: { cpu: "125m", memory: "256Mi" }
       env:
         - name: AWS_CA_BUNDLE
-          value: "/host-ca/tls-ca-bundle.pem"
+          value: "/custom-ca/tls-ca-bundle.pem"
       volumes:
-        - name: custom-ca-bundle
-          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+        - name: custom-ca
+          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
       volumeMounts:
-        - name: custom-ca-bundle
-          mountPath: "/host-ca"
+        - name: custom-ca
+          mountPath: "/custom-ca"
           readOnly: true
     repoServer:
       resources:
         limits: { cpu: "1000m", memory: "1Gi" }
       env:
         - name: AWS_CA_BUNDLE
-          value: "/host-ca/tls-ca-bundle.pem"
+          value: "/custom-ca/tls-ca-bundle.pem"
       volumes:
-        - name: custom-ca-bundle
-          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+        - name: custom-ca
+          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
       volumeMounts:
-        - name: custom-ca-bundle
-          mountPath: "/host-ca"
+        - name: custom-ca
+          mountPath: "/custom-ca"
           readOnly: true
 
 - ChartName: karpenter
-  Enabled: true
+  Enabled: false
   RepoUrl: oci://public.ecr.aws/karpenter/karpenter
   ChartVersion: 1.14.0
   Namespace: kube-system
@@ -485,11 +493,11 @@
         requests: { cpu: "500m", memory: "512Mi" }
       env:
         - name: AWS_CA_BUNDLE
-          value: "/host-ca/tls-ca-bundle.pem"
+          value: "/custom-ca/tls-ca-bundle.pem"
       extraVolumes:
-        - name: custom-ca-bundle
-          hostPath: { path: "/etc/pki/tls/certs", type: Directory }
+        - name: custom-ca
+          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
       extraVolumeMounts:
-        - name: custom-ca-bundle
-          mountPath: "/host-ca"
+        - name: custom-ca
+          mountPath: "/custom-ca"
           readOnly: true

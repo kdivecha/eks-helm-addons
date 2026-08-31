@@ -11,6 +11,8 @@ container:
   env:
     AWS_CA_BUNDLE: /host-ca/tls-ca-bundle.pem
 config:
+  monitor:
+    enabled: true
   jetstream:
     enabled: true
     fileStore:
@@ -19,6 +21,10 @@ config:
         enabled: true
         storageClassName: gp3
         size: 10Gi
+promExporter:
+  enabled: true
+  podMonitor:
+    enabled: true
 nats:
   resources:
     limits:
