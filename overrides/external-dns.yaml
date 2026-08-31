@@ -1,35 +1,35 @@
-serviceAccount:
-  create: true
-  name: external-dns
-provider:
-  name: aws
-sources:
-- service
-- ingress
-policy: upsert-only
-registry: txt
-txtOwnerId: REPLACE_WITH_EXTERNAL_DNS_TXT_OWNER_ID
-domainFilters:
-- REPLACE_WITH_ROUTE53_DOMAIN
-extraArgs:
-- --aws-zone-type=private
-- --zone-id-filter=REPLACE_WITH_ROUTE53_HOSTED_ZONE_ID
-extraVolumeMounts:
-- name: custom-ca-bundle
-  mountPath: /host-ca
-  readOnly: true
 resources:
-  limits:
-    cpu: 100m
-    memory: 128Mi
   requests:
     cpu: 50m
     memory: 64Mi
+  limits:
+    cpu: 100m
+    memory: 128Mi
 extraVolumes:
-- name: custom-ca-bundle
+- name: custom-ca
   hostPath:
+    path: /etc/pki/ca-trusts/extracted/pem
     type: Directory
-    path: /etc/pki/tls/certs
+extraArgs:
+- --aws-zone-type=private
+- --zone-id-filter=REPLACE_WITH_ROUTE53_HOSTED_ZONE_ID
+sources:
+- service
+- ingress
+txtOwnerId: REPLACE_WITH_EXTERNAL_DNS_TXT_OWNER_ID
+registry: txt
 env:
 - name: AWS_CA_BUNDLE
-  value: /host-ca/tls-ca-bundle.pem
+  value: /custom-ca/tls-ca-bundle.pem
+policy: upsert-only
+provider:
+  name: aws
+extraVolumeMounts:
+- name: custom-ca
+  readOnly: true
+  mountPath: /custom-ca
+domainFilters:
+- REPLACE_WITH_ROUTE53_DOMAIN
+serviceAccount:
+  create: true
+  name: external-dns

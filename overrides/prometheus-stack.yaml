@@ -1,90 +1,90 @@
-crds:
-  enabled: true
-prometheus:
-  prometheusSpec:
-    volumes:
-    - name: custom-ca-bundle
-      hostPath:
-        type: Directory
-        path: /etc/pki/tls/certs
-    resources:
-      limits:
-        cpu: 1000m
-        memory: 2Gi
-      requests:
-        cpu: 500m
-        memory: 1Gi
-    containers:
-    - name: prometheus
-      volumeMounts:
-      - name: custom-ca-bundle
-        mountPath: /host-ca
-        readOnly: true
-      env:
-      - name: AWS_CA_BUNDLE
-        value: /host-ca/tls-ca-bundle.pem
-    storageSpec:
-      volumeClaimTemplate:
-        spec:
-          storageClassName: gp3
-          accessModes:
-          - ReadWriteOnce
-          resources:
-            requests:
-              storage: 10Gi
-grafana:
-  adminUser: admin
-  additionalDataSources:
-  - name: Loki
-    type: loki
-    uid: loki
-    access: proxy
-    url: http://loki-gateway.monitoring.svc.cluster.local
-  service:
-    annotations:
-      alb.ingress.kubernetes.io/backend-protocol: HTTP
-      alb.ingress.kubernetes.io/healthcheck-path: /api/health
-      alb.ingress.kubernetes.io/success-codes: "200"
-  resources:
-    limits:
-      cpu: 100m
-      memory: 128Mi
-    requests:
-      cpu: 50m
-      memory: 64Mi
-  persistence:
-    enabled: true
-    storageClassName: gp3
-    accessModes:
-    - ReadWriteOnce
-    size: 10Gi
-  env:
-    AWS_CA_BUNDLE: /host-ca/tls-ca-bundle.pem
-  extraVolumes:
-  - name: custom-ca-bundle
-    hostPath:
-      path: /etc/pki/tls/certs
-      type: Directory
-  extraVolumeMounts:
-  - name: custom-ca-bundle
-    mountPath: /host-ca
-    readOnly: true
 alertmanager:
-  enabled: true
   alertmanagerSpec:
-    resources:
-      limits:
-        cpu: 100m
-        memory: 128Mi
-      requests:
-        cpu: 50m
-        memory: 64Mi
     storage:
       volumeClaimTemplate:
         spec:
-          storageClassName: gp3
           accessModes:
           - ReadWriteOnce
+          storageClassName: gp3
           resources:
             requests:
               storage: 10Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+  enabled: true
+grafana:
+  env:
+    AWS_CA_BUNDLE: /custom-ca/tls-ca-bundle.pem
+  adminUser: admin
+  extraVolumes:
+  - name: custom-ca
+    hostPath:
+      path: /etc/pki/ca-trusts/extracted/pem
+      type: Directory
+  service:
+    annotations:
+      alb.ingress.kubernetes.io/healthcheck-path: /api/health
+      alb.ingress.kubernetes.io/backend-protocol: HTTP
+      alb.ingress.kubernetes.io/success-codes: "200"
+  additionalDataSources:
+  - type: loki
+    name: Loki
+    access: proxy
+    uid: loki
+    url: http://loki-gateway.monitoring.svc.cluster.local
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  persistence:
+    accessModes:
+    - ReadWriteOnce
+    storageClassName: gp3
+    size: 10Gi
+    enabled: true
+  extraVolumeMounts:
+  - name: custom-ca
+    readOnly: true
+    mountPath: /custom-ca
+prometheus:
+  prometheusSpec:
+    containers:
+    - env:
+      - name: AWS_CA_BUNDLE
+        value: /custom-ca/tls-ca-bundle.pem
+      name: prometheus
+      volumeMounts:
+      - name: custom-ca
+        readOnly: true
+        mountPath: /custom-ca
+    volumes:
+    - name: custom-ca
+      hostPath:
+        path: /etc/pki/ca-trusts/extracted/pem
+        type: Directory
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 10Gi
+    resources:
+      requests:
+        cpu: 500m
+        memory: 1Gi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+crds:
+  enabled: true

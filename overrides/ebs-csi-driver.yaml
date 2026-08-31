@@ -1,45 +1,45 @@
 defaultStorageClass:
   enabled: false
 storageClasses:
-- name: gp3
+- volumeBindingMode: WaitForFirstConsumer
   annotations:
     storageclass.kubernetes.io/is-default-class: "true"
-  volumeBindingMode: WaitForFirstConsumer
-  allowVolumeExpansion: true
+  name: gp3
   reclaimPolicy: Delete
   parameters:
     type: gp3
     encrypted: "true"
-node:
-  volumes:
-  - name: custom-ca-bundle
-    hostPath:
-      type: Directory
-      path: /etc/pki/tls/certs
-  volumeMounts:
-  - name: custom-ca-bundle
-    mountPath: /host-ca
-    readOnly: true
+  allowVolumeExpansion: true
+controller:
   env:
   - name: AWS_CA_BUNDLE
-    value: /host-ca/tls-ca-bundle.pem
-controller:
+    value: /custom-ca/tls-ca-bundle.pem
+  volumeMounts:
+  - name: custom-ca
+    readOnly: true
+    mountPath: /custom-ca
   volumes:
-  - name: custom-ca-bundle
+  - name: custom-ca
     hostPath:
+      path: /etc/pki/ca-trusts/extracted/pem
       type: Directory
-      path: /etc/pki/tls/certs
   resources:
-    limits:
-      cpu: 200m
-      memory: 256Mi
     requests:
       cpu: 100m
       memory: 128Mi
-  volumeMounts:
-  - name: custom-ca-bundle
-    mountPath: /host-ca
-    readOnly: true
+    limits:
+      cpu: 200m
+      memory: 256Mi
+node:
   env:
   - name: AWS_CA_BUNDLE
-    value: /host-ca/tls-ca-bundle.pem
+    value: /custom-ca/tls-ca-bundle.pem
+  volumeMounts:
+  - name: custom-ca
+    readOnly: true
+    mountPath: /custom-ca
+  volumes:
+  - name: custom-ca
+    hostPath:
+      path: /etc/pki/ca-trusts/extracted/pem
+      type: Directory

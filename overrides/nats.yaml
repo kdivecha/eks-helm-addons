@@ -1,35 +1,35 @@
-volumes:
-- name: custom-ca-bundle
-  hostPath:
-    type: Directory
-    path: /etc/pki/tls/certs
-container:
-  volumeMounts:
-  - name: custom-ca-bundle
-    mountPath: /host-ca
-    readOnly: true
-  env:
-    AWS_CA_BUNDLE: /host-ca/tls-ca-bundle.pem
 config:
-  monitor:
-    enabled: true
   jetstream:
-    enabled: true
     fileStore:
-      enabled: true
       pvc:
-        enabled: true
         storageClassName: gp3
         size: 10Gi
+        enabled: true
+      enabled: true
+    enabled: true
+  monitor:
+    enabled: true
+container:
+  env:
+    AWS_CA_BUNDLE: /custom-ca/tls-ca-bundle.pem
+  volumeMounts:
+  - name: custom-ca
+    readOnly: true
+    mountPath: /custom-ca
+volumes:
+- name: custom-ca
+  hostPath:
+    path: /etc/pki/ca-trusts/extracted/pem
+    type: Directory
 promExporter:
-  enabled: true
   podMonitor:
     enabled: true
+  enabled: true
 nats:
   resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
     requests:
       cpu: 250m
       memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

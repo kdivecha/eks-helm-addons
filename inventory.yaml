@@ -9,10 +9,6 @@
     - Type: daemonset
       Name: eks-pod-identity-agent
   DefaultValues:
-    installCRDs: true
-    serviceAccount:
-      create: true
-      name: cert-manager
     resources:
       limits: { cpu: "100m", memory: "128Mi" }
       requests: { cpu: "20m", memory: "40Mi" }
@@ -141,6 +137,10 @@
     - Type: deployment
       Name: cert-manager-webhook
   DefaultValues:
+    installCRDs: true
+    serviceAccount:
+      create: true
+      name: cert-manager
     resources:
       limits: { cpu: "100m", memory: "128Mi" }
       requests: { cpu: "50m", memory: "64Mi" }

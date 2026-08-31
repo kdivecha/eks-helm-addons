@@ -1,36 +1,36 @@
-extraVolumeMounts:
-- name: custom-ca-bundle
-  mountPath: /host-ca
-  readOnly: true
+extraEnv:
+- name: AWS_CA_BUNDLE
+  value: /custom-ca/tls-ca-bundle.pem
+extraVolumes:
+- name: custom-ca
+  hostPath:
+    path: /etc/pki/ca-trusts/extracted/pem
+    type: Directory
 resources:
-  limits:
-    cpu: 200m
-    memory: 256Mi
   requests:
     cpu: 100m
     memory: 128Mi
-extraVolumes:
-- name: custom-ca-bundle
-  hostPath:
-    type: Directory
-    path: /etc/pki/tls/certs
-extraEnv:
-- name: AWS_CA_BUNDLE
-  value: /host-ca/tls-ca-bundle.pem
+  limits:
+    cpu: 200m
+    memory: 256Mi
 config:
   snippets:
     extraRelabelConfigs:
-    - action: replace
-      source_labels:
+    - source_labels:
       - __tmp_controller_name
+      action: replace
       target_label: workload
-    - action: replace
-      source_labels:
+    - source_labels:
       - __meta_kubernetes_pod_controller_kind
+      action: replace
       target_label: workload_kind
     - action: replace
+      replacement: Deployment
       source_labels:
       - __meta_kubernetes_pod_controller_kind
       regex: ReplicaSet
-      replacement: Deployment
       target_label: workload_kind
+extraVolumeMounts:
+- name: custom-ca
+  readOnly: true
+  mountPath: /custom-ca

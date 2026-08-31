@@ -1,47 +1,47 @@
-global:
-  logging:
-    level: info
-server:
-  service:
-    annotations:
-      alb.ingress.kubernetes.io/backend-protocol: HTTPS
-      alb.ingress.kubernetes.io/backend-protocol-version: HTTP2
-      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
-      alb.ingress.kubernetes.io/healthcheck-path: /healthz
-      alb.ingress.kubernetes.io/success-codes: "200"
-  volumes:
-  - name: custom-ca-bundle
-    hostPath:
-      type: Directory
-      path: /etc/pki/tls/certs
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 125m
-      memory: 256Mi
-  volumeMounts:
-  - name: custom-ca-bundle
-    mountPath: /host-ca
-    readOnly: true
+repoServer:
   env:
   - name: AWS_CA_BUNDLE
-    value: /host-ca/tls-ca-bundle.pem
-repoServer:
+    value: /custom-ca/tls-ca-bundle.pem
+  volumeMounts:
+  - name: custom-ca
+    readOnly: true
+    mountPath: /custom-ca
   volumes:
-  - name: custom-ca-bundle
+  - name: custom-ca
     hostPath:
+      path: /etc/pki/ca-trusts/extracted/pem
       type: Directory
-      path: /etc/pki/tls/certs
   resources:
     limits:
       cpu: 1000m
       memory: 1Gi
-  volumeMounts:
-  - name: custom-ca-bundle
-    mountPath: /host-ca
-    readOnly: true
+global:
+  logging:
+    level: info
+server:
   env:
   - name: AWS_CA_BUNDLE
-    value: /host-ca/tls-ca-bundle.pem
+    value: /custom-ca/tls-ca-bundle.pem
+  volumeMounts:
+  - name: custom-ca
+    readOnly: true
+    mountPath: /custom-ca
+  service:
+    annotations:
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+      alb.ingress.kubernetes.io/success-codes: "200"
+      alb.ingress.kubernetes.io/backend-protocol-version: HTTP2
+      alb.ingress.kubernetes.io/healthcheck-path: /healthz
+  volumes:
+  - name: custom-ca
+    hostPath:
+      path: /etc/pki/ca-trusts/extracted/pem
+      type: Directory
+  resources:
+    requests:
+      cpu: 125m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
