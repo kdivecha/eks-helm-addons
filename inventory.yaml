@@ -20,7 +20,7 @@
   Namespace: kube-system
   ValuesFile: lb-controller.yaml
   PodIdentity:
-    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/AWSLoadBalancerControllerPodIdentityRole
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_lb-controller-podidentity
     ServiceAccount: aws-load-balancer-controller
   RolloutTargets:
     - Type: deployment
@@ -46,7 +46,7 @@
   Namespace: kube-system
   ValuesFile: ebs-csi-driver.yaml
   PodIdentity:
-    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/AWSEBSCSIDriverPodIdentityRole
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_ebs-csi-driver-podidentity
     ServiceAccount: ebs-csi-controller-sa
   RolloutTargets:
     - Type: deployment
@@ -170,7 +170,7 @@
   Namespace: kube-system
   ValuesFile: external-dns.yaml
   PodIdentity:
-    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/REPLACE_WITH_EXTERNAL_DNS_POD_IDENTITY_ROLE
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_external-dns-podidentity
     ServiceAccount: external-dns
   RolloutTargets:
     - Type: deployment
@@ -210,7 +210,7 @@
   Namespace: cert-manager
   ValuesFile: privateca-issuer.yaml
   PodIdentity:
-    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/REPLACE_WITH_AWS_PRIVATECA_ISSUER_POD_IDENTITY_ROLE
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_privateca-issuer-podidentity
     ServiceAccount: aws-privateca-issuer
   RolloutTargets:
     - Type: deployment
@@ -331,7 +331,7 @@
   Namespace: monitoring
   ValuesFile: loki.yaml
   PodIdentity:
-    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/LokiPodIdentityRole
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_loki-podidentity
     ServiceAccount: loki
   RolloutTargets:
     - Type: statefulset
@@ -513,7 +513,7 @@
   ValuesFile: karpenter.yaml
   IsOCI: true
   PodIdentity:
-    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/KarpenterPodIdentityRole
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_karpenter-podidentity
     ServiceAccount: karpenter
   RolloutTargets:
     - Type: deployment

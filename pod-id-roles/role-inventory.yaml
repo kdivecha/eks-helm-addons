@@ -1,0 +1,21 @@
+# Pod Identity role definitions. PROGRAM_ is the required role and inline-policy
+# name prefix; every name ends with -podidentity.
+Roles:
+  - RoleName: PROGRAM_lb-controller-podidentity
+    TrustPolicyFile: policies/lb-controller-trust.json
+    PermissionPolicyFile: policies/lb-controller-perm.json
+  - RoleName: PROGRAM_ebs-csi-driver-podidentity
+    TrustPolicyFile: policies/ebs-csi-driver-trust.json
+    PermissionPolicyFile: policies/ebs-csi-driver-perm.json
+  - RoleName: PROGRAM_external-dns-podidentity
+    TrustPolicyFile: policies/external-dns-trust.json
+    PermissionPolicyFile: policies/external-dns-perm.json
+  - RoleName: PROGRAM_privateca-issuer-podidentity
+    TrustPolicyFile: policies/privateca-issuer-trust.json
+    PermissionPolicyFile: policies/privateca-issuer-perm.json
+  - RoleName: PROGRAM_loki-podidentity
+    TrustPolicyFile: policies/loki-trust.json
+    PermissionPolicyFile: policies/loki-perm.json
+  - RoleName: PROGRAM_karpenter-podidentity
+    TrustPolicyFile: policies/karpenter-trust.json
+    PermissionPolicyFile: policies/karpenter-perm.json

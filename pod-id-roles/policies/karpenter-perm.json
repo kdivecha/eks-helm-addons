@@ -29,13 +29,13 @@
         "iam:AddRoleToInstanceProfile", "iam:CreateInstanceProfile", "iam:DeleteInstanceProfile",
         "iam:GetInstanceProfile", "iam:RemoveRoleFromInstanceProfile", "iam:TagInstanceProfile"
       ],
-      "Resource": "arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:instance-profile/*"
+      "Resource": "arn:aws-us-gov:iam::123456789012:instance-profile/*"
     },
     {
       "Sid": "AllowKarpenterToPassConfiguredNodeRole",
       "Effect": "Allow",
       "Action": "iam:PassRole",
-      "Resource": "arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/REPLACE_WITH_KARPENTER_NODE_ROLE"
+      "Resource": "arn:aws-us-gov:iam::123456789012:role/REPLACE_WITH_KARPENTER_NODE_ROLE"
     }
   ]
 }

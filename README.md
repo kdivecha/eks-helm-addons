@@ -31,6 +31,10 @@ This repository provides an automated, modular, data-driven workflow engine usin
 │   ├── 📄 pod-identity-agent.yaml
 │   ├── 📄 lb-controller.yaml
 │   └── ...
+├── 📁 pod-id-roles/      # Pod Identity IAM role definitions and provisioning script
+│   ├── 📄 role-inventory.yaml
+│   ├── 📄 create-roles.ps1
+│   └── 📁 policies/
 ├── 📁 dashboards/        # Grafana dashboard ConfigMap manifests
 │   ├── 📄 cluster-overview.yaml
 │   ├── 📄 loki-logs-overview.yaml
@@ -74,7 +78,7 @@ Set an optional `ReleaseName` when the Helm release name should differ from the 
   Namespace: kube-system
   ValuesFile: lb-controller.yaml
   PodIdentity:
-    RoleArn: arn:REPLACE_WITH_AWS_PARTITION:iam::123456789012:role/AWSLoadBalancerControllerPodIdentityRole
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_lb-controller-podidentity
     ServiceAccount: aws-load-balancer-controller
   RolloutTargets:
     - Type: deployment
@@ -113,6 +117,16 @@ Run the driver file by passing the name of your target cluster as a positional a
 ```
 
 `Profile` defaults to `admin`; the script exports it as `AWS_PROFILE` and uses the AWS Region configured in that CLI profile.
+
+### Phase 3: Provisioning Pod Identity IAM Roles
+
+Replace all `REPLACE_WITH_...` values in `pod-id-roles/policies/`. The required `PROGRAM_` prefix and `-podidentity` suffix are already aligned between `pod-id-roles/role-inventory.yaml` and `inventory.yaml`. Then reconcile the roles and their inline policies:
+
+~~~powershell
+.\pod-id-roles\create-roles.ps1 -Profile admin
+~~~
+
+The script creates missing roles, updates the Pod Identity trust policy on existing roles, and puts an inline permission policy using the same name as its role. It supports `-WhatIf` for a no-change preview.
 
 ### Grafana Dashboard ConfigMaps
 
