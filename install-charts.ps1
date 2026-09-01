@@ -13,9 +13,9 @@ param (
     [ValidateNotNullOrEmpty()]
     [string]$cluster,
 
-    [Parameter(Mandatory = $true, HelpMessage = "Log environment label sent by Promtail, for example dev, test, or prod")]
+    [Parameter(HelpMessage = "Log environment label sent by Promtail, for example dev, test, or prod")]
     [ValidateNotNullOrEmpty()]
-    [string]$env,
+    [string]$env = "test",
 
     [Parameter(HelpMessage = "AWS CLI profile to use for EKS operations")]
     [ValidateNotNullOrEmpty()]

@@ -163,7 +163,7 @@ Install all enabled charts after the NATS secret is available:
 .\install-charts.ps1 -cluster my-production-cluster -env prod -profile admin
 ```
 
-`-env` is required and sets Promtail's `log_environment` label. The installer also uses `-cluster` to set Promtail's `cluster` label, configures its Loki endpoint as `loki-gateway.logging.svc.cluster.local`, and sets Loki's S3 object prefix to `clusters/<cluster>`. This allows multiple clusters to use the same Loki bucket without mixing their objects. The installer creates Pod Identity associations, renders every enabled chart before installing it, and waits for the configured rollout targets. It does not apply dashboards, infrastructure Ingresses, or network policies.
+`-env` sets Promtail's `log_environment` label and defaults to `test`. The installer also uses `-cluster` to set Promtail's `cluster` label, configures its Loki endpoint as `loki-gateway.logging.svc.cluster.local`, and sets Loki's S3 object prefix to `clusters/<cluster>`. This allows multiple clusters to use the same Loki bucket without mixing their objects. The installer creates Pod Identity associations, renders every enabled chart before installing it, and waits for the configured rollout targets. It does not apply dashboards, infrastructure Ingresses, or network policies.
 
 When `aws-privateca-issuer` is enabled, the installer applies `private-ca/cluster-issuer.yaml` after the issuer controller rolls out. Replace `REPLACE_WITH_PRIVATE_CA_ID` in both that manifest and `iam-roles/policies/privateca-issuer-perm.json` with the existing ACM Private CA ID before installation. The manifest creates the cluster-scoped `corporate-private-ca` issuer.
 
