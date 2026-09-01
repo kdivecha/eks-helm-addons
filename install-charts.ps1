@@ -1,12 +1,21 @@
 #!/usr/bin/env pwsh
+
+<#
+.SYNOPSIS
+Installs enabled Helm add-ons into an Amazon EKS cluster.
+
+.EXAMPLE
+.\install-charts.ps1 -cluster my-production-cluster -profile admin
+#>
 [CmdletBinding()]
 param (
     [Parameter(Mandatory = $true, Position = 0, HelpMessage = "The name of your Amazon EKS Cluster")]
-    [string]$ClusterName,
+    [ValidateNotNullOrEmpty()]
+    [string]$cluster,
 
     [Parameter(HelpMessage = "AWS CLI profile to use for EKS operations")]
     [ValidateNotNullOrEmpty()]
-    [string]$Profile = "admin"
+    [string]$profile = "admin"
 )
 
 if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
@@ -26,9 +35,22 @@ $ChartsDir = Join-Path $CurrentDir "charts"
 $OverridesDir = Join-Path $CurrentDir "overrides"
 $DashboardsDir = Join-Path $CurrentDir "dashboards"
 $InfraIngressDir = Join-Path $CurrentDir "infra-ingress"
+$SecretsDir = Join-Path $CurrentDir "secrets"
+$NetworkDir = Join-Path $CurrentDir "network"
 $GrafanaIngressManifest = Join-Path $InfraIngressDir "grafana.yaml"
 $ArgoCDIngressManifest = Join-Path $InfraIngressDir "argocd.yaml"
+$NatsSecretStoreManifest = Join-Path $SecretsDir "cluster-secret-store.yaml"
+$NatsAuthManifest = Join-Path $SecretsDir "nats-auth.yaml"
+$AppAuthManifest = Join-Path $SecretsDir "app-nats-auth.yaml"
+$AppNamespace = "app-dev"
 $Addons = Get-Content -Raw -Path $ConfigFile | ConvertFrom-Yaml
+$NetworkNamespaces = @(
+    $Addons | ForEach-Object { $_.Namespace }
+    "default"
+    "kube-public"
+    "kube-node-lease"
+    $AppNamespace
+) | Sort-Object -Unique
 
 ####################################################################
 # --- STEP 1: CHECKING DEPLOYMENT TOOLS ---
@@ -41,7 +63,7 @@ foreach ($Tool in @("aws", "helm", "kubectl")) {
         exit
     }
 }
-Write-Host "✓ All deployment tools found." -ForegroundColor Green
+Write-Host "All deployment tools found." -ForegroundColor Green
 
 ####################################################################
 # --- STEP 2: CREATING ISOLATED CONTEXT ---
@@ -49,12 +71,12 @@ Write-Host "✓ All deployment tools found." -ForegroundColor Green
 
 Write-Host " STEP 2: CREATING ISOLATED CONTEXT " -ForegroundColor Cyan
 
-$TempKubeConfig = Join-Path $CurrentDir "kubeconfig-$ClusterName.tmp"
+$TempKubeConfig = Join-Path $CurrentDir "kubeconfig-$Cluster.tmp"
 if (Test-Path $TempKubeConfig) { Remove-Item -Force $TempKubeConfig | Out-Null }
 
 $env:KUBECONFIG = $TempKubeConfig
 $env:AWS_PROFILE = $Profile
-aws eks update-kubeconfig --name $ClusterName
+aws eks update-kubeconfig --name $Cluster
 
 if ($LASTEXITCODE -ne 0) { Write-Error "Failed to connect to EKS."; exit }
 
@@ -83,23 +105,32 @@ try {
             Write-Error "Required local deployment assets are missing."; exit
         }
 
+        ### NATS SECRET MANAGEMENT
+        if ($Addon.ChartName -eq "nats") {
+            foreach ($Namespace in @($Addon.Namespace, $AppNamespace) | Select-Object -Unique) {
+                kubectl create namespace $Namespace --dry-run=client --output yaml | kubectl apply --filename -
+            }
+
+            kubectl apply --filename $NatsSecretStoreManifest --filename $NatsAuthManifest --filename $AppAuthManifest
+        }
+
         # --- EKS POD IDENTITY MAPPER ---
         if ($null -ne $Addon.PodIdentity) {
             Write-Host "Reconciling EKS Pod Identity Association..." -ForegroundColor Gray
             $ExistingAssoc = aws eks list-pod-identity-associations `
-                --cluster-name $ClusterName `
+                --cluster-name $Cluster `
                 --query "associations[?namespace=='$($Addon.Namespace)' && serviceAccount=='$($Addon.PodIdentity.ServiceAccount)'].associationId" `
                 --output text 2>$null
 
             if ([string]::IsNullOrEmpty($ExistingAssoc) -or $ExistingAssoc -eq "None") {
                 Write-Host "Creating new Pod Identity Association..." -ForegroundColor Gray
                 aws eks create-pod-identity-association `
-                    --cluster-name $ClusterName `
+                    --cluster-name $Cluster `
                     --namespace $Addon.Namespace `
                     --service-account $Addon.PodIdentity.ServiceAccount `
                     --role-arn $Addon.PodIdentity.RoleArn | Out-Null
             } else {
-                Write-Host "✓ Association exists ($ExistingAssoc)." -ForegroundColor Green
+                Write-Host "Association exists ($ExistingAssoc)." -ForegroundColor Green
             }
         }
 
@@ -107,10 +138,10 @@ try {
         $HelmArgs = @("upgrade", "--install", $ReleaseName, $LocalChartPath, "--namespace", $Addon.Namespace, "--create-namespace", "--values", $ExternalValuesPath)
         
         if ($Addon.ChartName -eq "aws-load-balancer-controller") {
-            $HelmArgs += @("--set", "clusterName=$ClusterName")
+            $HelmArgs += @("--set", "clusterName=$Cluster")
         }
         elseif ($Addon.ChartName -eq "karpenter") {
-            $HelmArgs += @("--set", "settings.clusterName=$ClusterName")
+            $HelmArgs += @("--set", "settings.clusterName=$Cluster")
         }
 
         # --- HELM RENDER PREFLIGHT ---
@@ -134,6 +165,7 @@ try {
             if ($LASTEXITCODE -ne 0) { Write-Error "Rollout timed out or crashed on target: $ResourceString."; exit }
         }
 
+        ### GRAFANA DASHBOARDS AND INFRASTRUCTURE INGRESS
         if ($Addon.ChartName -eq "kube-prometheus-stack") {
             if (-not (Test-Path -Path $DashboardsDir -PathType Container)) {
                 Write-Error "Grafana dashboard directory not found: $DashboardsDir"; exit
@@ -152,6 +184,7 @@ try {
             if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply Grafana infrastructure ingress."; exit }
         }
 
+        ### ARGO CD INFRASTRUCTURE INGRESS
         if ($Addon.ChartName -eq "argo-cd") {
             if (-not (Test-Path -Path $ArgoCDIngressManifest -PathType Leaf)) {
                 Write-Error "Argo CD ingress manifest not found: $ArgoCDIngressManifest"; exit
@@ -162,9 +195,18 @@ try {
             if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply Argo CD infrastructure ingress."; exit }
         }
 
-        Write-Host "✓ SUCCESS: Addon '$($Addon.ChartName)' is fully active!" -ForegroundColor Green
+        Write-Host "SUCCESS: Addon '$($Addon.ChartName)' is fully active!" -ForegroundColor Green
         Write-Output "" 
     }
+
+    foreach ($Namespace in $NetworkNamespaces) {
+        kubectl create namespace $Namespace --dry-run=client --output yaml | kubectl apply --filename -
+        if ($LASTEXITCODE -ne 0) { Write-Error "Failed to ensure network namespace '$Namespace' exists."; exit }
+    }
+
+    kubectl apply --filename $NetworkDir
+    if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply network policies."; exit }
+
     Write-Host "All enabled addons successfully deployed." -ForegroundColor Green
 }
 finally {

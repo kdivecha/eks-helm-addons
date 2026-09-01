@@ -10,6 +10,9 @@ Roles:
   - RoleName: PROGRAM_external-dns-podidentity
     TrustPolicyFile: policies/external-dns-trust.json
     PermissionPolicyFile: policies/external-dns-perm.json
+  - RoleName: PROGRAM_external-secrets-podidentity
+    TrustPolicyFile: policies/external-secrets-trust.json
+    PermissionPolicyFile: policies/external-secrets-perm.json
   - RoleName: PROGRAM_privateca-issuer-podidentity
     TrustPolicyFile: policies/privateca-issuer-trust.json
     PermissionPolicyFile: policies/privateca-issuer-perm.json

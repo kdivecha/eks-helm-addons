@@ -1,4 +1,9 @@
 config:
+  merge:
+    authorization:
+      users:
+      - user: << $NATS_AUTH_USERNAME >>
+        password: << $NATS_AUTH_PASSWORD >>
   jetstream:
     fileStore:
       pvc:
@@ -12,15 +17,32 @@ config:
 container:
   env:
     AWS_CA_BUNDLE: /custom-ca/tls-ca-bundle.pem
-  volumeMounts:
-  - name: custom-ca
-    readOnly: true
-    mountPath: /custom-ca
-volumes:
-- name: custom-ca
-  hostPath:
-    path: /etc/pki/ca-trusts/extracted/pem
-    type: Directory
+    NATS_AUTH_USERNAME:
+      valueFrom:
+        secretKeyRef:
+          name: nats-auth
+          key: username
+    NATS_AUTH_PASSWORD:
+      valueFrom:
+        secretKeyRef:
+          name: nats-auth
+          key: password
+  patch:
+  - op: add
+    path: /volumeMounts/-
+    value:
+      name: custom-ca
+      mountPath: /custom-ca
+      readOnly: true
+podTemplate:
+  patch:
+  - op: add
+    path: /spec/volumes/-
+    value:
+      name: custom-ca
+      hostPath:
+        path: /etc/pki/ca-trusts/extracted/pem
+        type: Directory
 promExporter:
   podMonitor:
     enabled: true

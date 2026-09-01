@@ -31,10 +31,20 @@ This repository provides an automated, modular, data-driven workflow engine usin
 │   ├── 📄 pod-identity-agent.yaml
 │   ├── 📄 lb-controller.yaml
 │   └── ...
-├── 📁 pod-id-roles/      # Pod Identity IAM role definitions and provisioning script
+├── 📁 iam-roles/         # Pod Identity IAM role definitions and provisioning script
 │   ├── 📄 role-inventory.yaml
 │   ├── 📄 create-roles.ps1
 │   └── 📁 policies/
+├── 📁 secrets/           # External Secrets Store and NATS credentials manifests
+│   ├── 📄 cluster-secret-store.yaml
+│   ├── 📄 nats-auth.yaml
+│   └── 📄 app-nats-auth.yaml
+├── 📁 network/           # Default-deny and required workload NetworkPolicies
+│   ├── 📄 app-dev.yaml
+│   ├── 📄 kube-system.yaml
+│   ├── 📄 monitoring.yaml
+│   ├── 📄 nats-system.yaml
+│   └── 📄 ...
 ├── 📁 dashboards/        # Grafana dashboard ConfigMap manifests
 │   ├── 📄 cluster-overview.yaml
 │   ├── 📄 loki-logs-overview.yaml
@@ -110,23 +120,59 @@ Run this execution layer to reconcile version data and sync remote configuration
 ```
 
 ### Phase 2: Installing to Target EKS Cluster
-Run the driver file by passing the name of your target cluster as a positional argument. The tool isolates credentials automatically and updates configurations sequentially. Any component marked `Enabled: false` inside the inventory index will be skipped automatically.
+Run the driver file with the target cluster. The tool isolates credentials automatically and updates configurations sequentially. Any component marked `Enabled: false` inside the inventory index will be skipped automatically.
 
 ```powershell
-.\install-charts.ps1 my-production-cluster -Profile admin
+.\install-charts.ps1 -cluster my-production-cluster -profile admin
 ```
 
 `Profile` defaults to `admin`; the script exports it as `AWS_PROFILE` and uses the AWS Region configured in that CLI profile.
 
 ### Phase 3: Provisioning Pod Identity IAM Roles
 
-Replace all `REPLACE_WITH_...` values in `pod-id-roles/policies/`. The required `PROGRAM_` prefix and `-podidentity` suffix are already aligned between `pod-id-roles/role-inventory.yaml` and `inventory.yaml`. Then reconcile the roles and their inline policies:
+Replace all `REPLACE_WITH_...` values in `iam-roles/policies/`. The required `PROGRAM_` prefix and `-podidentity` suffix are already aligned between `iam-roles/role-inventory.yaml` and `inventory.yaml`. Then reconcile the roles and their inline policies:
 
 ~~~powershell
-.\pod-id-roles\create-roles.ps1 -Profile admin
+.\iam-roles\create-roles.ps1 -Profile admin
 ~~~
 
 The script creates missing roles, updates the Pod Identity trust policy on existing roles, and puts an inline permission policy using the same name as its role. It supports `-WhatIf` for a no-change preview.
+
+### NATS Authentication Secrets
+
+Before installing NATS, manually create the `ext-eks-nats-auth` AWS Secrets Manager secret in the Region configured by `secrets/cluster-secret-store.yaml`. Its value must be JSON with `username` and `password` properties:
+
+```json
+{
+  "username": "nats-user",
+  "password": "your-password"
+}
+```
+
+Replace `REPLACE_WITH_AWS_REGION` in `secrets/cluster-secret-store.yaml`. `install-charts.ps1` creates the `nats-system` and `app-dev` namespaces when needed, then applies the ClusterSecretStore and both ExternalSecrets before installing NATS. Applications receive `NATS_URL`, `NATS_USERNAME`, and `NATS_PASSWORD` from `nats-client-credentials`.
+
+### Network Policies
+
+At the end of the installation, `install-charts.ps1` creates every namespace in `inventory.yaml` plus `default`, `kube-public`, `kube-node-lease`, and `app-dev`, then applies the policies in `network/`.
+
+Every namespace starts with default-deny, while allowing same-namespace traffic, CoreDNS on TCP/UDP 53, and outbound HTTPS on TCP 443. The table lists the additional rules in each namespace. `VPC CIDR` means the temporary `10.0.0.0/23` placeholder; replace it with the cluster VPC CIDR before production use.
+
+| Namespace | Additional ingress | Additional egress |
+| --- | --- | --- |
+| [`app-dev`](network/app-dev.yaml) | Prometheus scraping from `monitoring` | NATS in `nats-system` on TCP 4222 |
+| [`argocd`](network/argocd.yaml) | Prometheus scraping from `monitoring`<br>VPC CIDR to Argo CD Server on TCP 8080 | None |
+| [`cert-manager`](network/cert-manager.yaml) | Prometheus scraping from `monitoring`<br>VPC CIDR to the admission webhook on TCP 10250 | EKS Pod Identity agent at `169.254.170.23:80` |
+| [`default`](network/default.yaml) | Prometheus scraping from `monitoring` | None |
+| [`external-secrets`](network/external-secrets.yaml) | Prometheus scraping from `monitoring`<br>VPC CIDR to the admission webhook on TCP 10250 | EKS Pod Identity agent at `169.254.170.23:80` |
+| [`kube-node-lease`](network/kube-node-lease.yaml) | None | None |
+| [`kube-public`](network/kube-public.yaml) | None | None |
+| [`kube-system`](network/kube-system.yaml) | All namespaces to CoreDNS on TCP/UDP 53<br>Prometheus scraping from `monitoring`<br>VPC CIDR to the AWS Load Balancer Controller webhook on TCP 9443 | CoreDNS DNS forwarding on TCP/UDP 53<br>EKS Pod Identity agent at `169.254.170.23:80` |
+| [`logging`](network/logging.yaml) | Prometheus scraping from `monitoring` | Promtail to the Loki gateway in `monitoring` on TCP 8080 |
+| [`monitoring`](network/monitoring.yaml) | Promtail in `logging` to the Loki gateway on TCP 8080<br>VPC CIDR to Grafana on TCP 3000 and the Prometheus admission webhook on TCP 10250 | Prometheus to workload Pods in all namespaces<br>Prometheus to node metrics in the VPC CIDR on TCP 9100 and 10250<br>EKS Pod Identity agent at `169.254.170.23:80` |
+| [`nats-system`](network/nats-system.yaml) | Prometheus scraping from `monitoring`<br>`app-dev` to NATS on TCP 4222 | None |
+
+These policies are enforced only when the Amazon VPC CNI network-policy feature is enabled. Confirm the CNI version and enable its `enableNetworkPolicy` setting before relying on this baseline.
+
 
 ### Grafana Dashboard ConfigMaps
 

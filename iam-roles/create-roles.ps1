@@ -77,27 +77,27 @@ try {
 
         $RoleName = [string]$Role.RoleName
         $PolicyName = $RoleName
-        $ExistingRole = & aws iam get-role --role-name $RoleName --output json 2>&1
+        $ExistingRoleName = & aws iam list-roles --query "Roles[?RoleName=='$RoleName'].RoleName | [0]" --output text
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to determine whether IAM role '$RoleName' exists."
+        }
 
-        if ($LASTEXITCODE -eq 0) {
+        if (-not [string]::IsNullOrWhiteSpace($ExistingRoleName) -and $ExistingRoleName -ne "None") {
             if ($PSCmdlet.ShouldProcess($RoleName, "update its Pod Identity trust policy")) {
                 Invoke-AwsCli @("iam", "update-assume-role-policy", "--role-name", $RoleName, "--policy-document", "file://$TrustPolicyPath")
             }
         }
-        elseif ($ExistingRole -match "NoSuchEntity") {
+        else {
             if ($PSCmdlet.ShouldProcess($RoleName, "create Pod Identity IAM role")) {
                 Invoke-AwsCli @("iam", "create-role", "--role-name", $RoleName, "--assume-role-policy-document", "file://$TrustPolicyPath")
             }
-        }
-        else {
-            throw "Unable to determine whether IAM role '$RoleName' exists: $ExistingRole"
         }
 
         if ($PSCmdlet.ShouldProcess($RoleName, "put inline policy '$PolicyName'")) {
             Invoke-AwsCli @("iam", "put-role-policy", "--role-name", $RoleName, "--policy-name", $PolicyName, "--policy-document", "file://$PermissionPolicyPath")
         }
 
-        Write-Host "✓ Reconciled role '$RoleName' and inline policy '$PolicyName'." -ForegroundColor Green
+        Write-Host "Reconciled role '$RoleName' and inline policy '$PolicyName'." -ForegroundColor Green
     }
 }
 finally {

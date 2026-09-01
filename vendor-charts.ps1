@@ -1,8 +1,6 @@
 #!/usr/bin/env pwsh
 # Cmd : Install-Module -Name powershell-yaml -Scope CurrentUser -Force
 
-Install-Module -Name powershell-yaml -Scope CurrentUser -Force
-
 if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
     Write-Error "Required module 'powershell-yaml' is missing. Run: Install-Module powershell-yaml"
     exit
@@ -47,7 +45,7 @@ if (-not (Get-Command "git" -ErrorAction SilentlyContinue)) {
     Write-Error "Prerequisite tool missing from PATH: git"
     exit
 }
-Write-Host "✓ Core staging command tools found." -ForegroundColor Green
+Write-Host "Core staging command tools found." -ForegroundColor Green
 
 ####################################################################
 ### --- STEP 3: STAGING LOCAL ASSETS ---
@@ -62,12 +60,12 @@ foreach ($Addon in $Addons) {
     if (-not (Test-Path $ValuesFilePath)) {
         if ($null -ne $Addon.DefaultValues) {
             $Addon.DefaultValues | ConvertTo-Yaml | Out-File -FilePath $ValuesFilePath -Force
-            Write-Host " -> Created externalized override configuration: overrides/$($Addon.ValuesFile)" -ForegroundColor Gray
+            Write-Host "Created externalized override configuration: overrides/$($Addon.ValuesFile)" -ForegroundColor Gray
         } else {
             "{}" | Out-File -FilePath $ValuesFilePath -Force
         }
     } else {
-        Write-Host " -> Existing override file found: overrides/$($Addon.ValuesFile). Skipping generation." -ForegroundColor Green
+        Write-Host "Existing override file found: overrides/$($Addon.ValuesFile). Skipping generation." -ForegroundColor Green
     }
 
     $LocalChartPath = Join-Path $ChartsDir $Addon.ChartName
@@ -85,12 +83,12 @@ foreach ($Addon in $Addons) {
         if ($Addon.IsGitRepoChart) {
             $ExistingVendorReference = if (Test-Path $VendoredRefPath) { (Get-Content -Raw -Path $VendoredRefPath).Trim() } else { "" }
             if ($ExistingVendorReference -like "$($Addon.ChartVersion)@*") {
-                Write-Host " -> Local Git chart reference ($ExistingVendorReference) matches. Skipping download." -ForegroundColor Green
+                Write-Host "Local Git chart reference ($ExistingVendorReference) matches. Skipping download." -ForegroundColor Green
                 $ShouldDownload = $false
             }
         }
         elseif ($LocalChartVersion -eq $Addon.ChartVersion) {
-            Write-Host " -> Local chart version ($LocalChartVersion) matches. Skipping download." -ForegroundColor Green
+            Write-Host "Local chart version ($LocalChartVersion) matches. Skipping download." -ForegroundColor Green
             $ShouldDownload = $false
         }
 
@@ -100,18 +98,24 @@ foreach ($Addon in $Addons) {
             if (Test-Path $BackupDirPath) { Remove-Item -Recurse -Force $BackupDirPath | Out-Null }
 
             Rename-Item -Path $LocalChartPath -NewName $BackupDirName -Force
-            Write-Host " -> Version mismatch. Archived old copy to charts/$BackupDirName" -ForegroundColor Gray
+            Write-Host "Version mismatch. Archived old copy to charts/$BackupDirName" -ForegroundColor Gray
         }
     }
 
     if ($ShouldDownload) {
-        Write-Host " -> Downloading version $($Addon.ChartVersion)..." -ForegroundColor Gray
+        Write-Host "Downloading version $($Addon.ChartVersion)..." -ForegroundColor Gray
         if ($Addon.IsGitRepoChart) {
             $TempGitPath = Join-Path $ChartsDir "temp-git-clone"
             if (Test-Path $TempGitPath) { Remove-Item -Recurse -Force $TempGitPath | Out-Null }
             
-            git clone --depth 1 --branch $Addon.ChartVersion $Addon.RepoUrl $TempGitPath | Out-Null
-            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to clone Git chart reference: $($Addon.ChartVersion)"; exit }
+            git clone --depth 1 --no-checkout $Addon.RepoUrl $TempGitPath | Out-Null
+            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to clone Git repository: $($Addon.RepoUrl)"; exit }
+
+            git -C $TempGitPath fetch --depth 1 origin $Addon.ChartVersion | Out-Null
+            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to fetch Git chart reference: $($Addon.ChartVersion)"; exit }
+
+            git -C $TempGitPath checkout --detach FETCH_HEAD | Out-Null
+            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to check out Git chart reference: $($Addon.ChartVersion)"; exit }
 
             $GitCommit = (git -C $TempGitPath rev-parse HEAD).Trim()
             if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($GitCommit)) { Write-Error "Failed to resolve Git chart commit for: $($Addon.ChartVersion)"; exit }
@@ -131,10 +135,10 @@ foreach ($Addon in $Addons) {
         }
 
         if ($LASTEXITCODE -ne 0) { Write-Error "Failed to draw down chart archive."; exit }
-        Write-Host " -> ✓ Staging successful." -ForegroundColor Green
+        Write-Host "Staging successful." -ForegroundColor Green
     }
 
-    Write-Host " -> Validating chart and override values..." -ForegroundColor Gray
+    Write-Host "Validating chart and override values..." -ForegroundColor Gray
     & helm lint $LocalChartPath --values $ValuesFilePath
     if ($LASTEXITCODE -ne 0) { Write-Error "Helm lint failed for addon: $($Addon.ChartName)"; exit }
 
