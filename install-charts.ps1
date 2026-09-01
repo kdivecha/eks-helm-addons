@@ -139,6 +139,11 @@ try {
                 "--set-string", "config.clients[0].external_labels.log_environment=$env"
             )
         }
+        elseif ($Addon.ChartName -eq "loki") {
+            $HelmArgs += @(
+                "--set-string", "loki.storage.object_store.storage_prefix=clusters/$cluster"
+            )
+        }
 
         # --- HELM RENDER PREFLIGHT ---
         Write-Host "Rendering chart with final deployment values..." -ForegroundColor Gray

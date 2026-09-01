@@ -35,8 +35,14 @@ loki:
       object_store: s3
       store: tsdb
   storage:
+    use_thanos_objstore: true
     bucketNames:
       ruler: REPLACE_WITH_LOKI_S3_BUCKET
       chunks: REPLACE_WITH_LOKI_S3_BUCKET
+    object_store:
+      type: s3
+      storage_prefix: clusters/REPLACE_WITH_EKS_CLUSTER_NAME
+      s3:
+        region: us-gov-east-1
 write:
   replicas: 0
