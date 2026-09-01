@@ -33,24 +33,12 @@ if (-not (Test-Path $ConfigFile)) {
 
 $ChartsDir = Join-Path $CurrentDir "charts"
 $OverridesDir = Join-Path $CurrentDir "overrides"
-$DashboardsDir = Join-Path $CurrentDir "dashboards"
-$InfraIngressDir = Join-Path $CurrentDir "infra-ingress"
 $SecretsDir = Join-Path $CurrentDir "secrets"
-$NetworkDir = Join-Path $CurrentDir "network"
-$GrafanaIngressManifest = Join-Path $InfraIngressDir "grafana.yaml"
-$ArgoCDIngressManifest = Join-Path $InfraIngressDir "argocd.yaml"
 $NatsSecretStoreManifest = Join-Path $SecretsDir "cluster-secret-store.yaml"
 $NatsAuthManifest = Join-Path $SecretsDir "nats-auth.yaml"
 $AppAuthManifest = Join-Path $SecretsDir "app-nats-auth.yaml"
 $AppNamespace = "app-dev"
 $Addons = Get-Content -Raw -Path $ConfigFile | ConvertFrom-Yaml
-$NetworkNamespaces = @(
-    $Addons | ForEach-Object { $_.Namespace }
-    "default"
-    "kube-public"
-    "kube-node-lease"
-    $AppNamespace
-) | Sort-Object -Unique
 
 ####################################################################
 # --- STEP 1: CHECKING DEPLOYMENT TOOLS ---
@@ -165,49 +153,11 @@ try {
             if ($LASTEXITCODE -ne 0) { Write-Error "Rollout timed out or crashed on target: $ResourceString."; exit }
         }
 
-        ### GRAFANA DASHBOARDS AND INFRASTRUCTURE INGRESS
-        if ($Addon.ChartName -eq "kube-prometheus-stack") {
-            if (-not (Test-Path -Path $DashboardsDir -PathType Container)) {
-                Write-Error "Grafana dashboard directory not found: $DashboardsDir"; exit
-            }
-
-            Write-Host "Applying Grafana dashboard ConfigMaps..." -ForegroundColor Gray
-            kubectl apply --filename $DashboardsDir
-            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply Grafana dashboard ConfigMaps."; exit }
-
-            if (-not (Test-Path -Path $GrafanaIngressManifest -PathType Leaf)) {
-                Write-Error "Grafana ingress manifest not found: $GrafanaIngressManifest"; exit
-            }
-
-            Write-Host "Applying Grafana infrastructure ingress..." -ForegroundColor Gray
-            kubectl apply --filename $GrafanaIngressManifest
-            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply Grafana infrastructure ingress."; exit }
-        }
-
-        ### ARGO CD INFRASTRUCTURE INGRESS
-        if ($Addon.ChartName -eq "argo-cd") {
-            if (-not (Test-Path -Path $ArgoCDIngressManifest -PathType Leaf)) {
-                Write-Error "Argo CD ingress manifest not found: $ArgoCDIngressManifest"; exit
-            }
-
-            Write-Host "Applying Argo CD infrastructure ingress..." -ForegroundColor Gray
-            kubectl apply --filename $ArgoCDIngressManifest
-            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply Argo CD infrastructure ingress."; exit }
-        }
-
         Write-Host "SUCCESS: Addon '$($Addon.ChartName)' is fully active!" -ForegroundColor Green
         Write-Output "" 
     }
 
-    foreach ($Namespace in $NetworkNamespaces) {
-        kubectl create namespace $Namespace --dry-run=client --output yaml | kubectl apply --filename -
-        if ($LASTEXITCODE -ne 0) { Write-Error "Failed to ensure network namespace '$Namespace' exists."; exit }
-    }
-
-    kubectl apply --filename $NetworkDir
-    if ($LASTEXITCODE -ne 0) { Write-Error "Failed to apply network policies."; exit }
-
-    Write-Host "All enabled addons successfully deployed." -ForegroundColor Green
+    Write-Host "All enabled charts successfully deployed." -ForegroundColor Green
 }
 finally {
     if (Test-Path $TempKubeConfig) { Remove-Item -Force $TempKubeConfig | Out-Null }

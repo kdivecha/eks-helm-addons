@@ -20,7 +20,7 @@
   Namespace: external-secrets
   ValuesFile: external-secrets.yaml
   PodIdentity:
-    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_external-secrets-podidentity
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-external-secrets-pod-identity
     ServiceAccount: external-secrets
   RolloutTargets:
     - Type: deployment
@@ -67,7 +67,7 @@
   Namespace: kube-system
   ValuesFile: lb-controller.yaml
   PodIdentity:
-    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_lb-controller-podidentity
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-lb-controller-pod-identity
     ServiceAccount: aws-load-balancer-controller
   RolloutTargets:
     - Type: deployment
@@ -93,7 +93,7 @@
   Namespace: kube-system
   ValuesFile: ebs-csi-driver.yaml
   PodIdentity:
-    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_ebs-csi-driver-podidentity
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-ebs-csi-driver-pod-identity
     ServiceAccount: ebs-csi-controller-sa
   RolloutTargets:
     - Type: deployment
@@ -217,7 +217,7 @@
   Namespace: kube-system
   ValuesFile: external-dns.yaml
   PodIdentity:
-    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_external-dns-podidentity
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-external-dns-pod-identity
     ServiceAccount: external-dns
   RolloutTargets:
     - Type: deployment
@@ -257,7 +257,7 @@
   Namespace: cert-manager
   ValuesFile: privateca-issuer.yaml
   PodIdentity:
-    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_privateca-issuer-podidentity
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-privateca-issuer-pod-identity
     ServiceAccount: aws-privateca-issuer
   RolloutTargets:
     - Type: deployment
@@ -378,7 +378,7 @@
   Namespace: monitoring
   ValuesFile: loki.yaml
   PodIdentity:
-    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_loki-podidentity
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-loki-pod-identity
     ServiceAccount: loki
   RolloutTargets:
     - Type: statefulset
@@ -582,7 +582,7 @@
   ValuesFile: karpenter.yaml
   IsOCI: true
   PodIdentity:
-    RoleArn: arn:aws-us-gov:iam::123456789012:role/PROGRAM_karpenter-podidentity
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-karpenter-pod-identity
     ServiceAccount: karpenter
   RolloutTargets:
     - Type: deployment

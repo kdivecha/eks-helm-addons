@@ -1,24 +1,24 @@
-# Pod Identity role definitions. PROGRAM_ is the required role and inline-policy
-# name prefix; every name ends with -podidentity.
+# Pod Identity role definitions. ProgramManaged- is the required role and inline-policy
+# name prefix; every name ends with -pod-identity.
 Roles:
-  - RoleName: PROGRAM_lb-controller-podidentity
+  - RoleName: ProgramManaged-lb-controller-pod-identity
     TrustPolicyFile: policies/lb-controller-trust.json
     PermissionPolicyFile: policies/lb-controller-perm.json
-  - RoleName: PROGRAM_ebs-csi-driver-podidentity
+  - RoleName: ProgramManaged-ebs-csi-driver-pod-identity
     TrustPolicyFile: policies/ebs-csi-driver-trust.json
     PermissionPolicyFile: policies/ebs-csi-driver-perm.json
-  - RoleName: PROGRAM_external-dns-podidentity
+  - RoleName: ProgramManaged-external-dns-pod-identity
     TrustPolicyFile: policies/external-dns-trust.json
     PermissionPolicyFile: policies/external-dns-perm.json
-  - RoleName: PROGRAM_external-secrets-podidentity
+  - RoleName: ProgramManaged-external-secrets-pod-identity
     TrustPolicyFile: policies/external-secrets-trust.json
     PermissionPolicyFile: policies/external-secrets-perm.json
-  - RoleName: PROGRAM_privateca-issuer-podidentity
+  - RoleName: ProgramManaged-privateca-issuer-pod-identity
     TrustPolicyFile: policies/privateca-issuer-trust.json
     PermissionPolicyFile: policies/privateca-issuer-perm.json
-  - RoleName: PROGRAM_loki-podidentity
+  - RoleName: ProgramManaged-loki-pod-identity
     TrustPolicyFile: policies/loki-trust.json
     PermissionPolicyFile: policies/loki-perm.json
-  - RoleName: PROGRAM_karpenter-podidentity
+  - RoleName: ProgramManaged-karpenter-pod-identity
     TrustPolicyFile: policies/karpenter-trust.json
     PermissionPolicyFile: policies/karpenter-perm.json
