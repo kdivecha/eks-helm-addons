@@ -27,7 +27,7 @@ This repository provides an automated, modular, data-driven workflow engine usin
 │   ├── 📁 eks-pod-identity-agent/
 │   ├── 📁 aws-load-balancer-controller/
 │   └── ...
-├── 📁 overrides/         # Subdirectory target folder where value configuration manifests live
+├── 📁 overrides/         # UTF-8 value configuration manifests generated from inventory.yaml
 │   ├── 📄 pod-identity-agent.yaml
 │   ├── 📄 lb-controller.yaml
 │   └── ...
@@ -39,6 +39,8 @@ This repository provides an automated, modular, data-driven workflow engine usin
 │   ├── 📄 cluster-secret-store.yaml
 │   ├── 📄 nats-auth.yaml
 │   └── 📄 app-nats-auth.yaml
+├── 📁 private-ca/        # AWS Private CA issuer manifests
+│   └── 📄 cluster-issuer.yaml
 ├── 📁 network/           # NetworkPolicy deployment script and manifests
 │   ├── 📄 create-policies.ps1
 │   └── 📁 policies/
@@ -136,7 +138,7 @@ Update `inventory.yaml` before generating any chart values. It is the source of 
 
 ### 3. Vendor the chart sources and generated overrides
 
-Run the staging script to download the configured chart versions and generate missing override files:
+Run the staging script to download the configured chart versions and regenerate every UTF-8 override file from `inventory.yaml`:
 
 ```powershell
 .\vendor-charts.ps1
@@ -162,6 +164,8 @@ Install all enabled charts after the NATS secret is available:
 ```
 
 The installer creates Pod Identity associations, renders every enabled chart before installing it, and waits for the configured rollout targets. It does not apply dashboards, infrastructure Ingresses, or network policies.
+
+When `aws-privateca-issuer` is enabled, the installer applies `private-ca/cluster-issuer.yaml` after the issuer controller rolls out. Replace `REPLACE_WITH_PRIVATE_CA_ID` in both that manifest and `iam-roles/policies/privateca-issuer-perm.json` with the existing ACM Private CA ID before installation. The manifest creates the cluster-scoped `corporate-private-ca` issuer.
 
 ### 5. Apply infrastructure Ingresses
 

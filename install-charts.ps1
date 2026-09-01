@@ -33,6 +33,7 @@ if (-not (Test-Path $ConfigFile)) {
 $ChartsDir = Join-Path $PSScriptRoot "charts"
 $OverridesDir = Join-Path $PSScriptRoot "overrides"
 $SecretsDir = Join-Path $PSScriptRoot "secrets"
+$PrivateCaDir = Join-Path $PSScriptRoot "private-ca"
 $AppNamespace = "app-dev"
 $Addons = Get-Content -Raw -Path $ConfigFile | ConvertFrom-Yaml
 
@@ -147,6 +148,12 @@ try {
             $ResourceString = "$($Target.Type.ToLower())/$($Target.Name)"
             kubectl rollout status $ResourceString --namespace $Addon.Namespace --timeout=300s
             if ($LASTEXITCODE -ne 0) { Write-Error "Rollout timed out or crashed on target: $ResourceString."; exit }
+        }
+
+        if ($Addon.ChartName -eq "aws-privateca-issuer") {
+            Write-Host "Creating AWS Private CA cluster issuer..." -ForegroundColor Gray
+            kubectl apply --filename $PrivateCaDir
+            if ($LASTEXITCODE -ne 0) { Write-Error "Failed to create AWS Private CA cluster issuer."; exit }
         }
 
         Write-Host "SUCCESS: Addon '$($Addon.ChartName)' is fully active!" -ForegroundColor Green

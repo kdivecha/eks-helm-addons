@@ -170,119 +170,6 @@
     options:
       target: deployment/coredns
 
-- ChartName: cert-manager
-  Enabled: true
-  RepoUrl: https://charts.jetstack.io
-  ChartVersion: v1.14.4
-  Namespace: cert-manager
-  ValuesFile: cert-manager.yaml
-  RolloutTargets:
-    - Type: deployment
-      Name: cert-manager
-    - Type: deployment
-      Name: cert-manager-cainjector
-    - Type: deployment
-      Name: cert-manager-webhook
-  DefaultValues:
-    installCRDs: true
-    serviceAccount:
-      create: true
-      name: cert-manager
-    resources:
-      limits: { cpu: "100m", memory: "128Mi" }
-      requests: { cpu: "50m", memory: "64Mi" }
-    extraArgs:
-      - --issuer-ambient-credentials
-    env:
-      - name: AWS_CA_BUNDLE
-        value: "/custom-ca/tls-ca-bundle.pem"
-    volumes:
-      - name: custom-ca
-        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-    volumeMounts:
-      - name: custom-ca
-        mountPath: "/custom-ca"
-        readOnly: true
-    cainjector:
-      resources:
-        limits: { cpu: "100m", memory: "256Mi" }
-    webhook:
-      resources:
-        limits: { cpu: "100m", memory: "128Mi" }
-
-- ChartName: external-dns
-  Enabled: true
-  RepoUrl: https://kubernetes-sigs.github.io/external-dns/
-  ChartVersion: 1.20.0
-  Namespace: kube-system
-  ValuesFile: external-dns.yaml
-  PodIdentity:
-    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-external-dns-pod-identity
-    ServiceAccount: external-dns
-  RolloutTargets:
-    - Type: deployment
-      Name: external-dns
-  DefaultValues:
-    serviceAccount:
-      create: true
-      name: external-dns
-    provider:
-      name: aws
-    sources: [service, ingress]
-    policy: upsert-only
-    registry: txt
-    txtOwnerId: REPLACE_WITH_EXTERNAL_DNS_TXT_OWNER_ID
-    domainFilters: [REPLACE_WITH_ROUTE53_DOMAIN]
-    extraArgs:
-      - --aws-zone-type=private
-      - --zone-id-filter=REPLACE_WITH_ROUTE53_HOSTED_ZONE_ID
-    resources:
-      limits: { cpu: "100m", memory: "128Mi" }
-      requests: { cpu: "50m", memory: "64Mi" }
-    env:
-      - name: AWS_CA_BUNDLE
-        value: "/custom-ca/tls-ca-bundle.pem"
-    extraVolumes:
-      - name: custom-ca
-        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-    extraVolumeMounts:
-      - name: custom-ca
-        mountPath: "/custom-ca"
-        readOnly: true
-
-- ChartName: aws-privateca-issuer
-  Enabled: false
-  RepoUrl: https://cert-manager.github.io/aws-privateca-issuer
-  ChartVersion: v1.9.1
-  Namespace: cert-manager
-  ValuesFile: privateca-issuer.yaml
-  PodIdentity:
-    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-privateca-issuer-pod-identity
-    ServiceAccount: aws-privateca-issuer
-  RolloutTargets:
-    - Type: deployment
-      Name: aws-privateca-issuer
-  DefaultValues:
-    serviceAccount:
-      create: true
-      name: aws-privateca-issuer
-    approverRole:
-      enabled: true
-      serviceAccountName: cert-manager
-      namespace: cert-manager
-    resources:
-      limits: { cpu: "100m", memory: "128Mi" }
-      requests: { cpu: "50m", memory: "64Mi" }
-    env:
-      AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
-    volumes:
-      - name: custom-ca
-        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-    volumeMounts:
-      - name: custom-ca
-        mountPath: "/custom-ca"
-        readOnly: true
-
 - ChartName: kube-prometheus-stack
   Enabled: true
   RepoUrl: https://prometheus-community.github.io/helm-charts
@@ -475,11 +362,12 @@
     config:
       monitor:
         enabled: true
-      merge:
-        authorization:
-          users:
-            - user: "<< $NATS_AUTH_USERNAME >>"
-              password: "<< $NATS_AUTH_PASSWORD >>"
+      ### DISABLED AUTH 
+      # merge:
+      #   authorization:
+      #     users:
+      #       - user: "<< $NATS_AUTH_USERNAME >>"
+      #         password: "<< $NATS_AUTH_PASSWORD >>"
       jetstream:
         enabled: true
         fileStore:
@@ -499,16 +387,17 @@
     container:
       env:
         AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
-        NATS_AUTH_USERNAME:
-          valueFrom:
-            secretKeyRef:
-              name: nats-auth
-              key: username
-        NATS_AUTH_PASSWORD:
-          valueFrom:
-            secretKeyRef:
-              name: nats-auth
-              key: password
+        ### DISABLED AUTH 
+        # NATS_AUTH_USERNAME:
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: nats-auth
+        #       key: username
+        # NATS_AUTH_PASSWORD:
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: nats-auth
+        #       key: password
       patch:
         - op: add
           path: /volumeMounts/-
@@ -524,6 +413,122 @@
             name: custom-ca
             hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
 
+### REQUIRES R53 SETUP
+- ChartName: external-dns
+  Enabled: false
+  RepoUrl: https://kubernetes-sigs.github.io/external-dns/
+  ChartVersion: 1.20.0
+  Namespace: kube-system
+  ValuesFile: external-dns.yaml
+  PodIdentity:
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-external-dns-pod-identity
+    ServiceAccount: external-dns
+  RolloutTargets:
+    - Type: deployment
+      Name: external-dns
+  DefaultValues:
+    serviceAccount:
+      create: true
+      name: external-dns
+    provider:
+      name: aws
+    sources: [service, ingress]
+    policy: upsert-only
+    registry: txt
+    txtOwnerId: REPLACE_WITH_EXTERNAL_DNS_TXT_OWNER_ID
+    domainFilters: [REPLACE_WITH_ROUTE53_DOMAIN]
+    extraArgs:
+      - --aws-zone-type=private
+      - --zone-id-filter=REPLACE_WITH_ROUTE53_HOSTED_ZONE_ID
+    resources:
+      limits: { cpu: "100m", memory: "128Mi" }
+      requests: { cpu: "50m", memory: "64Mi" }
+    env:
+      - name: AWS_CA_BUNDLE
+        value: "/custom-ca/tls-ca-bundle.pem"
+    extraVolumes:
+      - name: custom-ca
+        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
+    extraVolumeMounts:
+      - name: custom-ca
+        mountPath: "/custom-ca"
+        readOnly: true
+
+### NOT NEEDED SINCE PCA ADDON IS DISABLED
+- ChartName: cert-manager
+  Enabled: false
+  RepoUrl: https://charts.jetstack.io
+  ChartVersion: v1.14.4
+  Namespace: cert-manager
+  ValuesFile: cert-manager.yaml
+  RolloutTargets:
+    - Type: deployment
+      Name: cert-manager
+    - Type: deployment
+      Name: cert-manager-cainjector
+    - Type: deployment
+      Name: cert-manager-webhook
+  DefaultValues:
+    installCRDs: true
+    serviceAccount:
+      create: true
+      name: cert-manager
+    resources:
+      limits: { cpu: "100m", memory: "128Mi" }
+      requests: { cpu: "50m", memory: "64Mi" }
+    extraArgs:
+      - --issuer-ambient-credentials
+    env:
+      - name: AWS_CA_BUNDLE
+        value: "/custom-ca/tls-ca-bundle.pem"
+    volumes:
+      - name: custom-ca
+        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
+    volumeMounts:
+      - name: custom-ca
+        mountPath: "/custom-ca"
+        readOnly: true
+    cainjector:
+      resources:
+        limits: { cpu: "100m", memory: "256Mi" }
+    webhook:
+      resources:
+        limits: { cpu: "100m", memory: "128Mi" }
+
+### REQUIRES ACM SUBORDINATE CA SETUP SIGNED BY CORPORATE PKI
+- ChartName: aws-privateca-issuer
+  Enabled: false
+  RepoUrl: https://cert-manager.github.io/aws-privateca-issuer
+  ChartVersion: v1.9.1
+  Namespace: cert-manager
+  ValuesFile: privateca-issuer.yaml
+  PodIdentity:
+    RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-privateca-issuer-pod-identity
+    ServiceAccount: aws-privateca-issuer
+  RolloutTargets:
+    - Type: deployment
+      Name: aws-privateca-issuer
+  DefaultValues:
+    serviceAccount:
+      create: true
+      name: aws-privateca-issuer
+    approverRole:
+      enabled: true
+      serviceAccountName: cert-manager
+      namespace: cert-manager
+    resources:
+      limits: { cpu: "100m", memory: "128Mi" }
+      requests: { cpu: "50m", memory: "64Mi" }
+    env:
+      AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
+    volumes:
+      - name: custom-ca
+        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
+    volumeMounts:
+      - name: custom-ca
+        mountPath: "/custom-ca"
+        readOnly: true
+        
 - ChartName: argo-cd
   ReleaseName: argocd
   Enabled: false
