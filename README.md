@@ -144,7 +144,7 @@ Run the staging script to download the configured chart versions and generate mi
 
 ### 4. Install the enabled Helm charts
 
-Before installing NATS, manually create the `ext-eks-nats-auth` AWS Secrets Manager secret in the Region configured by `secrets/cluster-secret-store.yaml`. Its value must be JSON with `username` and `password` properties:
+Before installing NATS, manually create the `eks-nats-auth-external` AWS Secrets Manager secret in the Region configured by `secrets/cluster-secret-store.yaml`. Its value must be JSON with `username` and `password` properties:
 
 ```json
 {
@@ -153,7 +153,7 @@ Before installing NATS, manually create the `ext-eks-nats-auth` AWS Secrets Mana
 }
 ```
 
-Replace `REPLACE_WITH_AWS_REGION` in `secrets/cluster-secret-store.yaml`. `install-charts.ps1` creates the `nats-system` and `app-dev` namespaces when needed, then applies the ClusterSecretStore and both ExternalSecrets before installing NATS. Applications receive `NATS_URL`, `NATS_USERNAME`, and `NATS_PASSWORD` from `nats-client-credentials`.
+`secrets/cluster-secret-store.yaml` is configured for `us-gov-east-1`. `install-charts.ps1` creates the `nats-system` and `app-dev` namespaces when needed, then applies the ClusterSecretStore and both ExternalSecrets before installing NATS. Applications receive `NATS_URL`, `NATS_USERNAME`, and `NATS_PASSWORD` from `nats-client-credentials`.
 
 Install all enabled charts after the NATS secret is available:
 

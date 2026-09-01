@@ -23,20 +23,16 @@ if (-not (Get-Module -ListAvailable -Name powershell-yaml)) {
     exit
 }
 
-$CurrentDir = $PSScriptRoot
-$ConfigFile = Join-Path $CurrentDir "inventory.yaml"
+$ConfigFile = Join-Path $PSScriptRoot "inventory.yaml"
 
 if (-not (Test-Path $ConfigFile)) {
     Write-Error "Configuration data file not found at: $ConfigFile"
     exit
 }
 
-$ChartsDir = Join-Path $CurrentDir "charts"
-$OverridesDir = Join-Path $CurrentDir "overrides"
-$SecretsDir = Join-Path $CurrentDir "secrets"
-$NatsSecretStoreManifest = Join-Path $SecretsDir "cluster-secret-store.yaml"
-$NatsAuthManifest = Join-Path $SecretsDir "nats-auth.yaml"
-$AppAuthManifest = Join-Path $SecretsDir "app-nats-auth.yaml"
+$ChartsDir = Join-Path $PSScriptRoot "charts"
+$OverridesDir = Join-Path $PSScriptRoot "overrides"
+$SecretsDir = Join-Path $PSScriptRoot "secrets"
 $AppNamespace = "app-dev"
 $Addons = Get-Content -Raw -Path $ConfigFile | ConvertFrom-Yaml
 
@@ -59,7 +55,7 @@ Write-Host "All deployment tools found." -ForegroundColor Green
 
 Write-Host " STEP 2: CREATING ISOLATED CONTEXT " -ForegroundColor Cyan
 
-$TempKubeConfig = Join-Path $CurrentDir "kubeconfig-$Cluster.tmp"
+$TempKubeConfig = Join-Path $PSScriptRoot "kubeconfig-$Cluster.tmp"
 if (Test-Path $TempKubeConfig) { Remove-Item -Force $TempKubeConfig | Out-Null }
 
 $env:KUBECONFIG = $TempKubeConfig
@@ -99,7 +95,7 @@ try {
                 kubectl create namespace $Namespace --dry-run=client --output yaml | kubectl apply --filename -
             }
 
-            kubectl apply --filename $NatsSecretStoreManifest --filename $NatsAuthManifest --filename $AppAuthManifest
+            kubectl apply --filename $SecretsDir
         }
 
         # --- EKS POD IDENTITY MAPPER ---

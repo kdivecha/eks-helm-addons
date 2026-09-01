@@ -4,6 +4,6 @@
     "Sid": "AllowCertificateIssuanceFromConfiguredPrivateCA",
     "Effect": "Allow",
     "Action": ["acm-pca:DescribeCertificateAuthority", "acm-pca:GetCertificate", "acm-pca:IssueCertificate"],
-    "Resource": "arn:aws-us-gov:acm-pca:REPLACE_WITH_AWS_REGION:123456789012:certificate-authority/REPLACE_WITH_PRIVATE_CA_ID"
+    "Resource": "arn:aws-us-gov:acm-pca:us-gov-east-1:123456789012:certificate-authority/REPLACE_WITH_PRIVATE_CA_ID"
   }]
 }
