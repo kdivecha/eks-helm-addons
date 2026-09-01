@@ -220,7 +220,7 @@
           type: loki
           uid: loki
           access: proxy
-          url: http://loki-gateway.monitoring.svc.cluster.local
+          url: http://loki-gateway.logging.svc.cluster.local
       service:
         annotations:
           alb.ingress.kubernetes.io/backend-protocol: HTTP
@@ -262,7 +262,7 @@
   Enabled: true
   RepoUrl: https://grafana.github.io/helm-charts
   ChartVersion: 6.55.0
-  Namespace: monitoring
+  Namespace: logging
   ValuesFile: loki.yaml
   PodIdentity:
     RoleArn: arn:aws-us-gov:iam::123456789012:role/ProgramManaged-loki-pod-identity
@@ -322,6 +322,11 @@
       Name: promtail
   DefaultValues:
     config:
+      clients:
+        - url: http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push
+          external_labels:
+            cluster: REPLACE_WITH_EKS_CLUSTER_NAME
+            log_environment: REPLACE_WITH_LOG_ENVIRONMENT
       snippets:
         extraRelabelConfigs:
           - action: replace

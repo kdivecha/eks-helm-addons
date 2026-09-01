@@ -5,13 +5,17 @@
 Installs enabled Helm add-ons into an Amazon EKS cluster.
 
 .EXAMPLE
-.\install-charts.ps1 -cluster my-production-cluster -profile admin
+.\install-charts.ps1 -cluster my-production-cluster -env prod -profile admin
 #>
 [CmdletBinding()]
 param (
     [Parameter(Mandatory = $true, Position = 0, HelpMessage = "The name of your Amazon EKS Cluster")]
     [ValidateNotNullOrEmpty()]
     [string]$cluster,
+
+    [Parameter(Mandatory = $true, HelpMessage = "Log environment label sent by Promtail, for example dev, test, or prod")]
+    [ValidateNotNullOrEmpty()]
+    [string]$env,
 
     [Parameter(HelpMessage = "AWS CLI profile to use for EKS operations")]
     [ValidateNotNullOrEmpty()]
@@ -127,6 +131,13 @@ try {
         }
         elseif ($Addon.ChartName -eq "karpenter") {
             $HelmArgs += @("--set", "settings.clusterName=$Cluster")
+        }
+        elseif ($Addon.ChartName -eq "promtail") {
+            $HelmArgs += @(
+                "--set-string", "config.clients[0].url=http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push",
+                "--set-string", "config.clients[0].external_labels.cluster=$cluster",
+                "--set-string", "config.clients[0].external_labels.log_environment=$env"
+            )
         }
 
         # --- HELM RENDER PREFLIGHT ---

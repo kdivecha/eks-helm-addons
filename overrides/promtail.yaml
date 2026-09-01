@@ -14,6 +14,11 @@ resources:
     cpu: 200m
     memory: 256Mi
 config:
+  clients:
+  - url: http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push
+    external_labels:
+      cluster: REPLACE_WITH_EKS_CLUSTER_NAME
+      log_environment: REPLACE_WITH_LOG_ENVIRONMENT
   snippets:
     extraRelabelConfigs:
     - source_labels:

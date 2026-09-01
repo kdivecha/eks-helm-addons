@@ -36,7 +36,7 @@ grafana:
     name: Loki
     access: proxy
     uid: loki
-    url: http://loki-gateway.monitoring.svc.cluster.local
+    url: http://loki-gateway.logging.svc.cluster.local
   resources:
     requests:
       cpu: 50m

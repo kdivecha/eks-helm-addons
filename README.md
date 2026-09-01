@@ -160,10 +160,10 @@ Before installing NATS, manually create the `eks-nats-auth-external` AWS Secrets
 Install all enabled charts after the NATS secret is available:
 
 ```powershell
-.\install-charts.ps1 -cluster my-production-cluster -profile admin
+.\install-charts.ps1 -cluster my-production-cluster -env prod -profile admin
 ```
 
-The installer creates Pod Identity associations, renders every enabled chart before installing it, and waits for the configured rollout targets. It does not apply dashboards, infrastructure Ingresses, or network policies.
+`-env` is required and sets Promtail's `log_environment` label. The installer also uses `-cluster` to set Promtail's `cluster` label and configures its Loki endpoint as `loki-gateway.logging.svc.cluster.local`. The installer creates Pod Identity associations, renders every enabled chart before installing it, and waits for the configured rollout targets. It does not apply dashboards, infrastructure Ingresses, or network policies.
 
 When `aws-privateca-issuer` is enabled, the installer applies `private-ca/cluster-issuer.yaml` after the issuer controller rolls out. Replace `REPLACE_WITH_PRIVATE_CA_ID` in both that manifest and `iam-roles/policies/privateca-issuer-perm.json` with the existing ACM Private CA ID before installation. The manifest creates the cluster-scoped `corporate-private-ca` issuer.
 
@@ -209,8 +209,8 @@ Every namespace starts with default-deny, while allowing same-namespace traffic,
 | [`kube-node-lease`](network/policies/kube-node-lease.yaml) | None | None |
 | [`kube-public`](network/policies/kube-public.yaml) | None | None |
 | [`kube-system`](network/policies/kube-system.yaml) | All namespaces to CoreDNS on TCP/UDP 53<br>Prometheus scraping from `monitoring`<br>VPC CIDR to the AWS Load Balancer Controller webhook on TCP 9443 | CoreDNS DNS forwarding on TCP/UDP 53<br>EKS Pod Identity agent at `169.254.170.23:80` |
-| [`logging`](network/policies/logging.yaml) | Prometheus scraping from `monitoring` | Promtail to the Loki gateway in `monitoring` on TCP 8080 |
-| [`monitoring`](network/policies/monitoring.yaml) | Promtail in `logging` to the Loki gateway on TCP 8080<br>VPC CIDR to Grafana on TCP 3000 and the Prometheus admission webhook on TCP 10250 | Prometheus to workload Pods in all namespaces<br>Prometheus to node metrics in the VPC CIDR on TCP 9100 and 10250<br>EKS Pod Identity agent at `169.254.170.23:80` |
+| [`logging`](network/policies/logging.yaml) | Prometheus scraping from `monitoring`<br>Grafana in `monitoring` to the Loki gateway on TCP 8080 | Loki to the EKS Pod Identity agent on TCP 80 |
+| [`monitoring`](network/policies/monitoring.yaml) | VPC CIDR to Grafana on TCP 3000 and the Prometheus admission webhook on TCP 10250 | Prometheus to workload Pods in all namespaces<br>Prometheus to node metrics in the VPC CIDR on TCP 9100 and 10250 |
 | [`nats-system`](network/policies/nats-system.yaml) | Prometheus scraping from `monitoring`<br>`app-dev` to NATS on TCP 4222 | None |
 
 These policies are enforced only when the Amazon VPC CNI network-policy feature is enabled. Confirm the CNI version and enable its `enableNetworkPolicy` setting before relying on this baseline.
