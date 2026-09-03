@@ -1,47 +1,48 @@
-repoServer:
-  env:
-  - name: AWS_CA_BUNDLE
-    value: /custom-ca/tls-ca-bundle.pem
-  volumeMounts:
-  - name: custom-ca
-    readOnly: true
-    mountPath: /custom-ca
-  volumes:
-  - name: custom-ca
-    hostPath:
-      path: /etc/pki/ca-trusts/extracted/pem
-      type: Directory
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
 global:
   logging:
     level: info
 server:
-  env:
-  - name: AWS_CA_BUNDLE
-    value: /custom-ca/tls-ca-bundle.pem
   volumeMounts:
   - name: custom-ca
-    readOnly: true
     mountPath: /custom-ca
+    readOnly: true
   service:
     annotations:
-      alb.ingress.kubernetes.io/backend-protocol: HTTPS
-      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
-      alb.ingress.kubernetes.io/success-codes: "200"
       alb.ingress.kubernetes.io/backend-protocol-version: HTTP2
       alb.ingress.kubernetes.io/healthcheck-path: /healthz
-  volumes:
-  - name: custom-ca
-    hostPath:
-      path: /etc/pki/ca-trusts/extracted/pem
-      type: Directory
+      alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
+      alb.ingress.kubernetes.io/success-codes: "200"
+      alb.ingress.kubernetes.io/backend-protocol: HTTPS
   resources:
-    requests:
-      cpu: 125m
-      memory: 256Mi
     limits:
       cpu: 500m
       memory: 512Mi
+    requests:
+      cpu: 125m
+      memory: 256Mi
+  env:
+  - name: AWS_CA_BUNDLE
+    value: /custom-ca/tls-ca-bundle.pem
+  volumes:
+  - name: custom-ca
+    hostPath:
+      type: Directory
+      path: /etc/pki/ca-trusts/extracted/pem
+repoServer:
+  volumes:
+  - name: custom-ca
+    hostPath:
+      type: Directory
+      path: /etc/pki/ca-trusts/extracted/pem
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  volumeMounts:
+  - name: custom-ca
+    mountPath: /custom-ca
+    readOnly: true
+  env:
+  - name: AWS_CA_BUNDLE
+    value: /custom-ca/tls-ca-bundle.pem
+

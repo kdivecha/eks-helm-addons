@@ -1,29 +1,26 @@
-serviceAccount:
-  name: loki
-read:
-  replicas: 0
-backend:
-  replicas: 0
 singleBinary:
   extraEnv:
   - name: AWS_CA_BUNDLE
     value: /custom-ca/tls-ca-bundle.pem
+  extraVolumeMounts:
+  - name: custom-ca
+    mountPath: /custom-ca
   extraVolumes:
   - name: custom-ca
     hostPath:
       path: /etc/pki/ca-trusts/extracted/pem
   resources:
-    requests:
-      cpu: 250m
-      memory: 512Mi
     limits:
       cpu: 500m
       memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
   replicas: 1
-  extraVolumeMounts:
-  - name: custom-ca
-    mountPath: /custom-ca
-deploymentMode: SingleBinary
+backend:
+  replicas: 0
+serviceAccount:
+  name: loki
 loki:
   schemaConfig:
     configs:
@@ -31,18 +28,22 @@ loki:
       index:
         prefix: loki_index_
         period: 24h
-      from: 2024-04-01
       object_store: s3
+      from: 2024-04-01
       store: tsdb
   storage:
-    use_thanos_objstore: true
     bucketNames:
       ruler: REPLACE_WITH_LOKI_S3_BUCKET
       chunks: REPLACE_WITH_LOKI_S3_BUCKET
     object_store:
       type: s3
-      storage_prefix: clusters/REPLACE_WITH_EKS_CLUSTER_NAME
       s3:
         region: us-gov-east-1
+      storage_prefix: clusters/REPLACE_WITH_EKS_CLUSTER_NAME
+    use_thanos_objstore: true
 write:
   replicas: 0
+deploymentMode: SingleBinary
+read:
+  replicas: 0
+

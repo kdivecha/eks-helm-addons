@@ -1,90 +1,91 @@
-alertmanager:
-  alertmanagerSpec:
-    storage:
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-          - ReadWriteOnce
-          storageClassName: gp3
-          resources:
-            requests:
-              storage: 10Gi
-    resources:
-      requests:
-        cpu: 50m
-        memory: 64Mi
-      limits:
-        cpu: 100m
-        memory: 128Mi
-  enabled: true
 grafana:
-  env:
-    AWS_CA_BUNDLE: /custom-ca/tls-ca-bundle.pem
-  adminUser: admin
+  additionalDataSources:
+  - url: http://loki-gateway.logging.svc.cluster.local
+    type: loki
+    name: Loki
+    uid: loki
+    access: proxy
   extraVolumes:
   - name: custom-ca
     hostPath:
-      path: /etc/pki/ca-trusts/extracted/pem
       type: Directory
+      path: /etc/pki/ca-trusts/extracted/pem
   service:
     annotations:
-      alb.ingress.kubernetes.io/healthcheck-path: /api/health
       alb.ingress.kubernetes.io/backend-protocol: HTTP
       alb.ingress.kubernetes.io/success-codes: "200"
-  additionalDataSources:
-  - type: loki
-    name: Loki
-    access: proxy
-    uid: loki
-    url: http://loki-gateway.logging.svc.cluster.local
+      alb.ingress.kubernetes.io/healthcheck-path: /api/health
+  extraVolumeMounts:
+  - name: custom-ca
+    mountPath: /custom-ca
+    readOnly: true
+  adminUser: admin
+  persistence:
+    storageClassName: gp3
+    size: 10Gi
+    accessModes:
+    - ReadWriteOnce
+    enabled: true
   resources:
-    requests:
-      cpu: 50m
-      memory: 64Mi
     limits:
       cpu: 100m
       memory: 128Mi
-  persistence:
-    accessModes:
-    - ReadWriteOnce
-    storageClassName: gp3
-    size: 10Gi
-    enabled: true
-  extraVolumeMounts:
-  - name: custom-ca
-    readOnly: true
-    mountPath: /custom-ca
+    requests:
+      cpu: 50m
+      memory: 64Mi
+  env:
+    AWS_CA_BUNDLE: /custom-ca/tls-ca-bundle.pem
+crds:
+  enabled: true
 prometheus:
   prometheusSpec:
-    containers:
-    - env:
-      - name: AWS_CA_BUNDLE
-        value: /custom-ca/tls-ca-bundle.pem
-      name: prometheus
-      volumeMounts:
-      - name: custom-ca
-        readOnly: true
-        mountPath: /custom-ca
     volumes:
     - name: custom-ca
       hostPath:
-        path: /etc/pki/ca-trusts/extracted/pem
         type: Directory
+        path: /etc/pki/ca-trusts/extracted/pem
+    resources:
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 1Gi
     storageSpec:
       volumeClaimTemplate:
         spec:
-          accessModes:
-          - ReadWriteOnce
           storageClassName: gp3
           resources:
             requests:
               storage: 10Gi
+          accessModes:
+          - ReadWriteOnce
+    containers:
+    - name: prometheus
+      volumeMounts:
+      - name: custom-ca
+        mountPath: /custom-ca
+        readOnly: true
+      env:
+      - name: AWS_CA_BUNDLE
+        value: /custom-ca/tls-ca-bundle.pem
+alertmanager:
+  alertmanagerSpec:
     resources:
-      requests:
-        cpu: 500m
-        memory: 1Gi
       limits:
-        cpu: 1000m
-        memory: 2Gi
-crds:
+        cpu: 100m
+        memory: 128Mi
+      requests:
+        cpu: 50m
+        memory: 64Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          resources:
+            requests:
+              storage: 10Gi
+          accessModes:
+          - ReadWriteOnce
   enabled: true
+

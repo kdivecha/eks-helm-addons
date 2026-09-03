@@ -1,26 +1,27 @@
+extraVolumeMounts:
+- name: custom-ca
+  mountPath: /custom-ca
+  readOnly: true
+extraVolumes:
+- name: custom-ca
+  hostPath:
+    type: Directory
+    path: /etc/pki/ca-trusts/extracted/pem
+config:
+  linear:
+    min: 1
+    coresPerReplica: 256
+    nodesPerReplica: 16
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
 env:
 - name: AWS_CA_BUNDLE
   value: /custom-ca/tls-ca-bundle.pem
 options:
   target: deployment/coredns
-extraVolumes:
-- name: custom-ca
-  hostPath:
-    path: /etc/pki/ca-trusts/extracted/pem
-    type: Directory
-resources:
-  requests:
-    cpu: 50m
-    memory: 64Mi
-  limits:
-    cpu: 100m
-    memory: 128Mi
-config:
-  linear:
-    nodesPerReplica: 16
-    min: 1
-    coresPerReplica: 256
-extraVolumeMounts:
-- name: custom-ca
-  readOnly: true
-  mountPath: /custom-ca
+

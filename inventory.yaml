@@ -8,10 +8,6 @@
   RolloutTargets:
     - Type: daemonset
       Name: eks-pod-identity-agent
-  DefaultValues:
-    resources:
-      limits: { cpu: "100m", memory: "128Mi" }
-      requests: { cpu: "20m", memory: "40Mi" }
 
 - ChartName: external-secrets
   Enabled: true
@@ -29,36 +25,6 @@
       Name: external-secrets-webhook
     - Type: deployment
       Name: external-secrets-cert-controller
-  DefaultValues:
-    installCRDs: true
-    serviceAccount:
-      create: true
-      name: external-secrets
-    resources:
-      limits: { cpu: "200m", memory: "256Mi" }
-      requests: { cpu: "100m", memory: "128Mi" }
-    webhook:
-      resources:
-        limits: { cpu: "100m", memory: "128Mi" }
-        requests: { cpu: "50m", memory: "64Mi" }
-    certController:
-      resources:
-        limits: { cpu: "100m", memory: "128Mi" }
-        requests: { cpu: "50m", memory: "64Mi" }
-    serviceMonitor:
-      enabled: true
-      additionalLabels:
-        release: kube-prometheus-stack
-    extraEnv:
-      - name: AWS_CA_BUNDLE
-        value: "/custom-ca/tls-ca-bundle.pem"
-    extraVolumes:
-      - name: custom-ca
-        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-    extraVolumeMounts:
-      - name: custom-ca
-        mountPath: "/custom-ca"
-        readOnly: true
 
 - ChartName: aws-load-balancer-controller
   Enabled: true
@@ -72,19 +38,6 @@
   RolloutTargets:
     - Type: deployment
       Name: aws-load-balancer-controller
-  DefaultValues:
-    resources:
-      limits: { cpu: "200m", memory: "256Mi" }
-      requests: { cpu: "100m", memory: "128Mi" }
-    env:
-      AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
-    extraVolumes:
-      - name: custom-ca
-        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-    extraVolumeMounts:
-      - name: custom-ca
-        mountPath: "/custom-ca"
-        readOnly: true
 
 - ChartName: aws-ebs-csi-driver
   Enabled: true
@@ -100,44 +53,6 @@
       Name: ebs-csi-controller
     - Type: daemonset
       Name: ebs-csi-node
-  DefaultValues:
-    defaultStorageClass:
-      enabled: false
-    storageClasses:
-      - name: gp3
-        annotations:
-          storageclass.kubernetes.io/is-default-class: "true"
-        volumeBindingMode: WaitForFirstConsumer
-        allowVolumeExpansion: true
-        reclaimPolicy: Delete
-        parameters:
-          type: gp3
-          encrypted: "true"
-    controller:
-      resources:
-        limits: { cpu: "200m", memory: "256Mi" }
-        requests: { cpu: "100m", memory: "128Mi" }
-      env:
-        - name: AWS_CA_BUNDLE
-          value: "/custom-ca/tls-ca-bundle.pem"
-      volumes:
-        - name: custom-ca
-          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-      volumeMounts:
-        - name: custom-ca
-          mountPath: "/custom-ca"
-          readOnly: true
-    node:
-      env:
-        - name: AWS_CA_BUNDLE
-          value: "/custom-ca/tls-ca-bundle.pem"
-      volumes:
-        - name: custom-ca
-          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-      volumeMounts:
-        - name: custom-ca
-          mountPath: "/custom-ca"
-          readOnly: true
 
 - ChartName: cluster-proportional-autoscaler
   Enabled: true
@@ -148,27 +63,6 @@
   RolloutTargets:
     - Type: deployment
       Name: cluster-proportional-autoscaler
-  DefaultValues:
-    resources:
-      limits: { cpu: "100m", memory: "128Mi" }
-      requests: { cpu: "50m", memory: "64Mi" }
-    env:
-      - name: AWS_CA_BUNDLE
-        value: "/custom-ca/tls-ca-bundle.pem"
-    extraVolumes:
-      - name: custom-ca
-        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-    extraVolumeMounts:
-      - name: custom-ca
-        mountPath: "/custom-ca"
-        readOnly: true
-    config:
-      linear:
-        coresPerReplica: 256
-        nodesPerReplica: 16
-        min: 1
-    options:
-      target: deployment/coredns
 
 - ChartName: kube-prometheus-stack
   Enabled: true
@@ -185,78 +79,6 @@
       Name: prometheus-kube-prometheus-stack-prometheus
     - Type: statefulset
       Name: kube-prometheus-stack-alertmanager
-  DefaultValues:
-    crds:
-      enabled: true
-    prometheus:
-      prometheusSpec:
-        resources:
-          limits: { cpu: "1000m", memory: "2Gi" }
-          requests: { cpu: "500m", memory: "1Gi" }
-        containers:
-          - name: prometheus
-            env:
-              - name: AWS_CA_BUNDLE
-                value: "/custom-ca/tls-ca-bundle.pem"
-            volumeMounts:
-              - name: custom-ca
-                mountPath: "/custom-ca"
-                readOnly: true
-        volumes:
-          - name: custom-ca
-            hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-        storageSpec:
-          volumeClaimTemplate:
-            spec:
-              storageClassName: gp3
-              accessModes: ["ReadWriteOnce"]
-              resources:
-                requests:
-                  storage: 10Gi
-    grafana:
-      adminUser: admin
-      additionalDataSources:
-        - name: Loki
-          type: loki
-          uid: loki
-          access: proxy
-          url: http://loki-gateway.logging.svc.cluster.local
-      service:
-        annotations:
-          alb.ingress.kubernetes.io/backend-protocol: HTTP
-          alb.ingress.kubernetes.io/healthcheck-path: /api/health
-          alb.ingress.kubernetes.io/success-codes: "200"
-      resources:
-        limits: { cpu: "100m", memory: "128Mi" }
-        requests: { cpu: "50m", memory: "64Mi" }
-      persistence:
-        enabled: true
-        storageClassName: gp3
-        accessModes: ["ReadWriteOnce"]
-        size: 10Gi
-      env:
-        AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
-      extraVolumes:
-        - name: custom-ca
-          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-      extraVolumeMounts:
-        - name: custom-ca
-          mountPath: "/custom-ca"
-          readOnly: true
-    alertmanager:
-      enabled: true
-      alertmanagerSpec:
-        resources:
-          limits: { cpu: "100m", memory: "128Mi" }
-          requests: { cpu: "50m", memory: "64Mi" }
-        storage:
-          volumeClaimTemplate:
-            spec:
-              storageClassName: gp3
-              accessModes: ["ReadWriteOnce"]
-              resources:
-                requests:
-                  storage: 10Gi
 
 - ChartName: loki
   Enabled: true
@@ -272,51 +94,6 @@
       Name: loki
     - Type: deployment
       Name: loki-gateway
-  DefaultValues:
-    loki:
-      storage:
-        # The installer replaces this with clusters/<cluster> for each deployment.
-        use_thanos_objstore: true
-        bucketNames:
-          chunks: REPLACE_WITH_LOKI_S3_BUCKET
-          ruler: REPLACE_WITH_LOKI_S3_BUCKET
-        object_store:
-          type: s3
-          storage_prefix: clusters/REPLACE_WITH_EKS_CLUSTER_NAME
-          s3:
-            region: us-gov-east-1
-      schemaConfig:
-        configs:
-          - from: "2024-04-01"
-            store: tsdb
-            object_store: s3
-            schema: v13
-            index:
-              prefix: loki_index_
-              period: 24h
-    deploymentMode: SingleBinary
-    serviceAccount:
-      name: loki
-    singleBinary:
-      replicas: 1
-      resources:
-        limits: { cpu: "500m", memory: "1Gi" }
-        requests: { cpu: "250m", memory: "512Mi" }
-      extraEnv:
-        - name: AWS_CA_BUNDLE
-          value: "/custom-ca/tls-ca-bundle.pem"
-      extraVolumes:
-        - name: custom-ca
-          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem" }
-      extraVolumeMounts:
-        - name: custom-ca
-          mountPath: "/custom-ca"
-    backend:
-      replicas: 0
-    read:
-      replicas: 0
-    write:
-      replicas: 0
 
 - ChartName: promtail
   Enabled: true
@@ -327,39 +104,6 @@
   RolloutTargets:
     - Type: daemonset
       Name: promtail
-  DefaultValues:
-    config:
-      clients:
-        - url: http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push
-          external_labels:
-            cluster: REPLACE_WITH_EKS_CLUSTER_NAME
-            log_environment: REPLACE_WITH_LOG_ENVIRONMENT
-      snippets:
-        extraRelabelConfigs:
-          - action: replace
-            source_labels: [__tmp_controller_name]
-            target_label: workload
-          - action: replace
-            source_labels: [__meta_kubernetes_pod_controller_kind]
-            target_label: workload_kind
-          - action: replace
-            source_labels: [__meta_kubernetes_pod_controller_kind]
-            regex: ReplicaSet
-            replacement: Deployment
-            target_label: workload_kind
-    resources:
-      limits: { cpu: "200m", memory: "256Mi" }
-      requests: { cpu: "100m", memory: "128Mi" }
-    extraEnv:
-      - name: AWS_CA_BUNDLE
-        value: "/custom-ca/tls-ca-bundle.pem"
-    extraVolumes:
-      - name: custom-ca
-        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-    extraVolumeMounts:
-      - name: custom-ca
-        mountPath: "/custom-ca"
-        readOnly: true
 
 - ChartName: nats
   Enabled: true
@@ -370,62 +114,9 @@
   RolloutTargets:
     - Type: statefulset
       Name: nats
-  DefaultValues:
-    config:
-      monitor:
-        enabled: true
-      ### DISABLED AUTH 
-      # merge:
-      #   authorization:
-      #     users:
-      #       - user: "<< $NATS_AUTH_USERNAME >>"
-      #         password: "<< $NATS_AUTH_PASSWORD >>"
-      jetstream:
-        enabled: true
-        fileStore:
-          enabled: true
-          pvc:
-            enabled: true
-            storageClassName: gp3
-            size: 10Gi
-    promExporter:
-      enabled: true
-      podMonitor:
-        enabled: true
-    nats:
-      resources:
-        limits: { cpu: "500m", memory: "512Mi" }
-        requests: { cpu: "250m", memory: "256Mi" }
-    container:
-      env:
-        AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
-        ### DISABLED AUTH 
-        # NATS_AUTH_USERNAME:
-        #   valueFrom:
-        #     secretKeyRef:
-        #       name: nats-auth
-        #       key: username
-        # NATS_AUTH_PASSWORD:
-        #   valueFrom:
-        #     secretKeyRef:
-        #       name: nats-auth
-        #       key: password
-      patch:
-        - op: add
-          path: /volumeMounts/-
-          value:
-            name: custom-ca
-            mountPath: "/custom-ca"
-            readOnly: true
-    podTemplate:
-      patch:
-        - op: add
-          path: /spec/volumes/-
-          value:
-            name: custom-ca
-            hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
 
 ### REQUIRES R53 SETUP
+
 - ChartName: external-dns
   Enabled: false
   RepoUrl: https://kubernetes-sigs.github.io/external-dns/
@@ -438,35 +129,9 @@
   RolloutTargets:
     - Type: deployment
       Name: external-dns
-  DefaultValues:
-    serviceAccount:
-      create: true
-      name: external-dns
-    provider:
-      name: aws
-    sources: [service, ingress]
-    policy: upsert-only
-    registry: txt
-    txtOwnerId: REPLACE_WITH_EXTERNAL_DNS_TXT_OWNER_ID
-    domainFilters: [REPLACE_WITH_ROUTE53_DOMAIN]
-    extraArgs:
-      - --aws-zone-type=private
-      - --zone-id-filter=REPLACE_WITH_ROUTE53_HOSTED_ZONE_ID
-    resources:
-      limits: { cpu: "100m", memory: "128Mi" }
-      requests: { cpu: "50m", memory: "64Mi" }
-    env:
-      - name: AWS_CA_BUNDLE
-        value: "/custom-ca/tls-ca-bundle.pem"
-    extraVolumes:
-      - name: custom-ca
-        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-    extraVolumeMounts:
-      - name: custom-ca
-        mountPath: "/custom-ca"
-        readOnly: true
 
 ### NOT NEEDED SINCE PCA ADDON IS DISABLED
+
 - ChartName: cert-manager
   Enabled: false
   RepoUrl: https://charts.jetstack.io
@@ -480,34 +145,9 @@
       Name: cert-manager-cainjector
     - Type: deployment
       Name: cert-manager-webhook
-  DefaultValues:
-    installCRDs: true
-    serviceAccount:
-      create: true
-      name: cert-manager
-    resources:
-      limits: { cpu: "100m", memory: "128Mi" }
-      requests: { cpu: "50m", memory: "64Mi" }
-    extraArgs:
-      - --issuer-ambient-credentials
-    env:
-      - name: AWS_CA_BUNDLE
-        value: "/custom-ca/tls-ca-bundle.pem"
-    volumes:
-      - name: custom-ca
-        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-    volumeMounts:
-      - name: custom-ca
-        mountPath: "/custom-ca"
-        readOnly: true
-    cainjector:
-      resources:
-        limits: { cpu: "100m", memory: "256Mi" }
-    webhook:
-      resources:
-        limits: { cpu: "100m", memory: "128Mi" }
 
 ### REQUIRES ACM SUBORDINATE CA SETUP SIGNED BY CORPORATE PKI
+
 - ChartName: aws-privateca-issuer
   Enabled: false
   RepoUrl: https://cert-manager.github.io/aws-privateca-issuer
@@ -520,27 +160,7 @@
   RolloutTargets:
     - Type: deployment
       Name: aws-privateca-issuer
-  DefaultValues:
-    serviceAccount:
-      create: true
-      name: aws-privateca-issuer
-    approverRole:
-      enabled: true
-      serviceAccountName: cert-manager
-      namespace: cert-manager
-    resources:
-      limits: { cpu: "100m", memory: "128Mi" }
-      requests: { cpu: "50m", memory: "64Mi" }
-    env:
-      AWS_CA_BUNDLE: "/custom-ca/tls-ca-bundle.pem"
-    volumes:
-      - name: custom-ca
-        hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-    volumeMounts:
-      - name: custom-ca
-        mountPath: "/custom-ca"
-        readOnly: true
-        
+
 - ChartName: argo-cd
   ReleaseName: argocd
   Enabled: false
@@ -553,43 +173,6 @@
       Name: argocd-server
     - Type: deployment
       Name: argocd-repo-server
-  DefaultValues:
-    global:
-      logging: { level: info }
-    server:
-      service:
-        annotations:
-          alb.ingress.kubernetes.io/backend-protocol: HTTPS
-          alb.ingress.kubernetes.io/backend-protocol-version: HTTP2
-          alb.ingress.kubernetes.io/healthcheck-protocol: HTTPS
-          alb.ingress.kubernetes.io/healthcheck-path: /healthz
-          alb.ingress.kubernetes.io/success-codes: "200"
-      resources:
-        limits: { cpu: "500m", memory: "512Mi" }
-        requests: { cpu: "125m", memory: "256Mi" }
-      env:
-        - name: AWS_CA_BUNDLE
-          value: "/custom-ca/tls-ca-bundle.pem"
-      volumes:
-        - name: custom-ca
-          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-      volumeMounts:
-        - name: custom-ca
-          mountPath: "/custom-ca"
-          readOnly: true
-    repoServer:
-      resources:
-        limits: { cpu: "1000m", memory: "1Gi" }
-      env:
-        - name: AWS_CA_BUNDLE
-          value: "/custom-ca/tls-ca-bundle.pem"
-      volumes:
-        - name: custom-ca
-          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-      volumeMounts:
-        - name: custom-ca
-          mountPath: "/custom-ca"
-          readOnly: true
 
 - ChartName: karpenter
   Enabled: false
@@ -604,18 +187,3 @@
   RolloutTargets:
     - Type: deployment
       Name: karpenter
-  DefaultValues:
-    controller:
-      resources:
-        limits: { cpu: "1000m", memory: "1Gi" }
-        requests: { cpu: "500m", memory: "512Mi" }
-      env:
-        - name: AWS_CA_BUNDLE
-          value: "/custom-ca/tls-ca-bundle.pem"
-      extraVolumes:
-        - name: custom-ca
-          hostPath: { path: "/etc/pki/ca-trusts/extracted/pem", type: Directory }
-      extraVolumeMounts:
-        - name: custom-ca
-          mountPath: "/custom-ca"
-          readOnly: true

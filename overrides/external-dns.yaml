@@ -1,35 +1,36 @@
 resources:
-  requests:
-    cpu: 50m
-    memory: 64Mi
   limits:
     cpu: 100m
     memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+domainFilters:
+- REPLACE_WITH_ROUTE53_DOMAIN
 extraVolumes:
 - name: custom-ca
   hostPath:
-    path: /etc/pki/ca-trusts/extracted/pem
     type: Directory
-extraArgs:
-- --aws-zone-type=private
-- --zone-id-filter=REPLACE_WITH_ROUTE53_HOSTED_ZONE_ID
-sources:
-- service
-- ingress
+    path: /etc/pki/ca-trusts/extracted/pem
 txtOwnerId: REPLACE_WITH_EXTERNAL_DNS_TXT_OWNER_ID
-registry: txt
-env:
-- name: AWS_CA_BUNDLE
-  value: /custom-ca/tls-ca-bundle.pem
 policy: upsert-only
-provider:
-  name: aws
-extraVolumeMounts:
-- name: custom-ca
-  readOnly: true
-  mountPath: /custom-ca
-domainFilters:
-- REPLACE_WITH_ROUTE53_DOMAIN
+registry: txt
 serviceAccount:
   create: true
   name: external-dns
+provider:
+  name: aws
+sources:
+- service
+- ingress
+extraArgs:
+- --aws-zone-type=private
+- --zone-id-filter=REPLACE_WITH_ROUTE53_HOSTED_ZONE_ID
+extraVolumeMounts:
+- name: custom-ca
+  mountPath: /custom-ca
+  readOnly: true
+env:
+- name: AWS_CA_BUNDLE
+  value: /custom-ca/tls-ca-bundle.pem
+

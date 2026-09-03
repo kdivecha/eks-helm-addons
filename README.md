@@ -8,7 +8,7 @@ This repository provides an automated, modular, data-driven workflow engine usin
 
 *   **Decoupled & Isolated Staging:** The staging layer relies exclusively on an internet connection and the `helm` and `git` command binaries. It operates independently of an active AWS session context footprint.
 *   **Structured Project Tree Workspace:** Extracted upstream raw charts are cleanly managed under an isolated `charts/` root folder. Custom configuration manifests are stored inside a dedicated `overrides/` folder.
-*   **Completely Data-Driven Property Templates:** Avoids messy embedded script configuration logic. The staging script parses data properties mapped natively under the `DefaultValues` configuration block inside `inventory.yaml` and handles parsing tasks automatically.
+*   **Separated Inventory and Values:** `inventory.yaml` defines add-on metadata, while the matching files in `overrides/` hold the Helm values. The staging script preserves existing overrides.
 *   **Secure Environment Isolation Guard:** Protects live systems by binding credentials strictly to a temporary process session profile (`$env:KUBECONFIG`). Accidental production data leaks or cross-contamination is functionally impossible.
 *   **Idempotency & Version Shifting Cache:** Reads your local configuration definitions dynamically. If versions match, downloading is safely bypassed. If version data changes, older directory trees are cleanly archived to `<chart-name>-<old-version>` to protect adjustments.
 *   **Dynamic Component Execution Toggles:** Features a built-in `Enabled: true/false` block. The script evaluates this flag smoothly to allow toggling entire sub-workloads on or off instantly without purging inventory entries.
@@ -20,14 +20,14 @@ This repository provides an automated, modular, data-driven workflow engine usin
 
 ```text
 📁 eks-helm-addons/
-├── 📄 inventory.yaml     # Core data-driven configuration inventory index ledger
+├── 📄 inventory.yaml     # Add-on metadata, versions, namespaces, and rollout targets
 ├── 📄 vendor-charts.ps1  # Phase 1: Local chart asset staging and cache runner
 ├── 📄 install-charts.ps1 # Phase 2: Secure sequential sandboxed installer driver
 ├── 📁 charts/            # Subdirectory target folder where extracted Helm charts live
 │   ├── 📁 eks-pod-identity-agent/
 │   ├── 📁 aws-load-balancer-controller/
 │   └── ...
-├── 📁 overrides/         # UTF-8 value configuration manifests generated from inventory.yaml
+├── 📁 overrides/         # UTF-8 Helm value configuration manifests
 │   ├── 📄 pod-identity-agent.yaml
 │   ├── 📄 lb-controller.yaml
 │   └── ...
@@ -134,11 +134,11 @@ The script creates missing roles, updates the Pod Identity trust policy on exist
 
 ### 2. Update the add-on inventory
 
-Update `inventory.yaml` before generating any chart values. It is the source of truth for enabled add-ons, chart versions, namespaces, Pod Identity role ARNs, and default values. Ensure every enabled `PodIdentity.RoleArn` points to the role created in step 1.
+Update `inventory.yaml` before vendoring charts. It is the source of truth for enabled add-ons, chart versions, namespaces, Pod Identity role ARNs, and rollout targets. Helm values belong in the corresponding file under `overrides/`. Ensure every enabled `PodIdentity.RoleArn` points to the role created in step 1.
 
-### 3. Vendor the chart sources and generated overrides
+### 3. Vendor the chart sources
 
-Run the staging script to download the configured chart versions and regenerate every UTF-8 override file from `inventory.yaml`:
+Run the staging script to download the configured chart versions and validate the existing UTF-8 override files. It creates an empty override only when one is missing:
 
 ```powershell
 .\vendor-charts.ps1

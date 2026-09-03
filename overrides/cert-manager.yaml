@@ -1,35 +1,36 @@
-env:
-- name: AWS_CA_BUNDLE
-  value: /custom-ca/tls-ca-bundle.pem
-serviceAccount:
-  create: true
-  name: cert-manager
-volumeMounts:
-- name: custom-ca
-  readOnly: true
-  mountPath: /custom-ca
-extraArgs:
-- --issuer-ambient-credentials
-installCRDs: true
-resources:
-  requests:
-    cpu: 50m
-    memory: 64Mi
-  limits:
-    cpu: 100m
-    memory: 128Mi
-volumes:
-- name: custom-ca
-  hostPath:
-    path: /etc/pki/ca-trusts/extracted/pem
-    type: Directory
-cainjector:
-  resources:
-    limits:
-      cpu: 100m
-      memory: 256Mi
 webhook:
   resources:
     limits:
       cpu: 100m
       memory: 128Mi
+cainjector:
+  resources:
+    limits:
+      cpu: 100m
+      memory: 256Mi
+volumes:
+- name: custom-ca
+  hostPath:
+    type: Directory
+    path: /etc/pki/ca-trusts/extracted/pem
+serviceAccount:
+  create: true
+  name: cert-manager
+volumeMounts:
+- name: custom-ca
+  mountPath: /custom-ca
+  readOnly: true
+extraArgs:
+- --issuer-ambient-credentials
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+env:
+- name: AWS_CA_BUNDLE
+  value: /custom-ca/tls-ca-bundle.pem
+installCRDs: true
+

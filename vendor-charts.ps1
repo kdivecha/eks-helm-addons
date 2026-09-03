@@ -57,12 +57,12 @@ foreach ($Addon in $Addons) {
     Write-Host "Processing Addon: $($Addon.ChartName)" -ForegroundColor Yellow
     
     $ValuesFilePath = Join-Path $OverridesDir $Addon.ValuesFile
-    if ($null -ne $Addon.DefaultValues) {
-        $Addon.DefaultValues | ConvertTo-Yaml | Out-File -FilePath $ValuesFilePath -Encoding utf8 -Force
-    } else {
+    if (-not (Test-Path $ValuesFilePath)) {
         "{}" | Out-File -FilePath $ValuesFilePath -Encoding utf8 -Force
+        Write-Host "Created empty override configuration: overrides/$($Addon.ValuesFile)" -ForegroundColor Gray
+    } else {
+        Write-Host "Using existing override configuration: overrides/$($Addon.ValuesFile)" -ForegroundColor Gray
     }
-    Write-Host "Generated override configuration: overrides/$($Addon.ValuesFile)" -ForegroundColor Gray
 
     $LocalChartPath = Join-Path $ChartsDir $Addon.ChartName
     $VendoredRefPath = Join-Path $LocalChartPath ".vendor-ref"

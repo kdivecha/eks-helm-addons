@@ -1,9 +1,37 @@
+podTemplate:
+  patch:
+  - path: /spec/volumes/-
+    value:
+      name: custom-ca
+      hostPath:
+        type: Directory
+        path: /etc/pki/ca-trusts/extracted/pem
+    op: add
+nats:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+promExporter:
+  podMonitor:
+    enabled: true
+  enabled: true
+container:
+  patch:
+  - path: /volumeMounts/-
+    value:
+      name: custom-ca
+      mountPath: /custom-ca
+      readOnly: true
+    op: add
+  env:
+    AWS_CA_BUNDLE: /custom-ca/tls-ca-bundle.pem
 config:
-  merge:
-    authorization:
-      users:
-      - user: << $NATS_AUTH_USERNAME >>
-        password: << $NATS_AUTH_PASSWORD >>
+  monitor:
+    enabled: true
   jetstream:
     fileStore:
       pvc:
@@ -12,46 +40,4 @@ config:
         enabled: true
       enabled: true
     enabled: true
-  monitor:
-    enabled: true
-container:
-  env:
-    AWS_CA_BUNDLE: /custom-ca/tls-ca-bundle.pem
-    NATS_AUTH_USERNAME:
-      valueFrom:
-        secretKeyRef:
-          name: nats-auth
-          key: username
-    NATS_AUTH_PASSWORD:
-      valueFrom:
-        secretKeyRef:
-          name: nats-auth
-          key: password
-  patch:
-  - op: add
-    path: /volumeMounts/-
-    value:
-      name: custom-ca
-      mountPath: /custom-ca
-      readOnly: true
-podTemplate:
-  patch:
-  - op: add
-    path: /spec/volumes/-
-    value:
-      name: custom-ca
-      hostPath:
-        path: /etc/pki/ca-trusts/extracted/pem
-        type: Directory
-promExporter:
-  podMonitor:
-    enabled: true
-  enabled: true
-nats:
-  resources:
-    requests:
-      cpu: 250m
-      memory: 256Mi
-    limits:
-      cpu: 500m
-      memory: 512Mi
+

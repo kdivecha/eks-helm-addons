@@ -1,25 +1,26 @@
-env:
-  AWS_CA_BUNDLE: /custom-ca/tls-ca-bundle.pem
+approverRole:
+  namespace: cert-manager
+  serviceAccountName: cert-manager
+  enabled: true
+volumeMounts:
+- name: custom-ca
+  mountPath: /custom-ca
+  readOnly: true
 serviceAccount:
   create: true
   name: aws-privateca-issuer
-approverRole:
-  serviceAccountName: cert-manager
-  namespace: cert-manager
-  enabled: true
 volumes:
 - name: custom-ca
   hostPath:
-    path: /etc/pki/ca-trusts/extracted/pem
     type: Directory
+    path: /etc/pki/ca-trusts/extracted/pem
 resources:
-  requests:
-    cpu: 50m
-    memory: 64Mi
   limits:
     cpu: 100m
     memory: 128Mi
-volumeMounts:
-- name: custom-ca
-  readOnly: true
-  mountPath: /custom-ca
+  requests:
+    cpu: 50m
+    memory: 64Mi
+env:
+  AWS_CA_BUNDLE: /custom-ca/tls-ca-bundle.pem
+

@@ -1,18 +1,15 @@
 extraEnv:
 - name: AWS_CA_BUNDLE
   value: /custom-ca/tls-ca-bundle.pem
+extraVolumeMounts:
+- name: custom-ca
+  mountPath: /custom-ca
+  readOnly: true
 extraVolumes:
 - name: custom-ca
   hostPath:
-    path: /etc/pki/ca-trusts/extracted/pem
     type: Directory
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
-  limits:
-    cpu: 200m
-    memory: 256Mi
+    path: /etc/pki/ca-trusts/extracted/pem
 config:
   clients:
   - url: http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push
@@ -21,21 +18,25 @@ config:
       log_environment: REPLACE_WITH_LOG_ENVIRONMENT
   snippets:
     extraRelabelConfigs:
-    - source_labels:
+    - target_label: workload
+      action: replace
+      source_labels:
       - __tmp_controller_name
+    - target_label: workload_kind
       action: replace
-      target_label: workload
-    - source_labels:
-      - __meta_kubernetes_pod_controller_kind
-      action: replace
-      target_label: workload_kind
-    - action: replace
-      replacement: Deployment
       source_labels:
       - __meta_kubernetes_pod_controller_kind
-      regex: ReplicaSet
+    - regex: ReplicaSet
       target_label: workload_kind
-extraVolumeMounts:
-- name: custom-ca
-  readOnly: true
-  mountPath: /custom-ca
+      action: replace
+      source_labels:
+      - __meta_kubernetes_pod_controller_kind
+      replacement: Deployment
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
