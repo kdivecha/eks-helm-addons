@@ -7,7 +7,11 @@ podTemplate:
         type: Directory
         path: /etc/pki/ca-trusts/extracted/pem
     op: add
-nats:
+promExporter:
+  podMonitor:
+    enabled: true
+  enabled: true
+container:
   resources:
     limits:
       cpu: 500m
@@ -15,11 +19,6 @@ nats:
     requests:
       cpu: 250m
       memory: 256Mi
-promExporter:
-  podMonitor:
-    enabled: true
-  enabled: true
-container:
   patch:
   - path: /volumeMounts/-
     value:
@@ -40,4 +39,3 @@ config:
         enabled: true
       enabled: true
     enabled: true
-

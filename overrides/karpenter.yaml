@@ -1,3 +1,8 @@
+extraVolumes:
+- name: custom-ca
+  hostPath:
+    type: Directory
+    path: /etc/pki/ca-trusts/extracted/pem
 controller:
   extraVolumeMounts:
   - name: custom-ca
@@ -10,12 +15,6 @@ controller:
     requests:
       cpu: 500m
       memory: 512Mi
-  extraVolumes:
-  - name: custom-ca
-    hostPath:
-      type: Directory
-      path: /etc/pki/ca-trusts/extracted/pem
   env:
   - name: AWS_CA_BUNDLE
     value: /custom-ca/tls-ca-bundle.pem
-

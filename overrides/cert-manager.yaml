@@ -29,8 +29,7 @@ resources:
   requests:
     cpu: 50m
     memory: 64Mi
-env:
+extraEnv:
 - name: AWS_CA_BUNDLE
   value: /custom-ca/tls-ca-bundle.pem
 installCRDs: true
-
