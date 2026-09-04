@@ -41,14 +41,6 @@ This repository provides an automated, modular, data-driven workflow engine usin
 │   └── 📄 app-nats-auth.yaml
 ├── 📁 private-ca/        # AWS Private CA issuer manifests
 │   └── 📄 cluster-issuer.yaml
-├── 📁 network/           # NetworkPolicy deployment script and manifests
-│   ├── 📄 create-policies.ps1
-│   └── 📁 policies/
-│       ├── 📄 app-dev.yaml
-│       ├── 📄 kube-system.yaml
-│       ├── 📄 monitoring.yaml
-│       ├── 📄 nats-system.yaml
-│       └── 📄 ...
 ├── 📁 dashboards/        # Grafana dashboard deployment script and ConfigMaps
 │   ├── 📄 create-dashboards.ps1
 │   └── 📁 manifests/
@@ -72,7 +64,6 @@ Ensure the following binaries are globally accessible in your system's `PATH`:
 *   **PowerShell Core (`pwsh`) v7+**
 *   **AWS CLI v2**
 *   **Helm v3**
-*   **Helm diff plugin** (`helm plugin install --verify=false https://github.com/databus23/helm-diff`)
 *   **kubectl**
 *   **git**
 
@@ -164,7 +155,7 @@ Install all enabled charts after the NATS secret is available:
 .\install-charts.ps1 -cluster my-production-cluster -env prod -profile admin
 ```
 
-`-env` sets Promtail's `log_environment` label and defaults to `test`. The installer also uses `-cluster` to set Promtail's `cluster` label, configures its Loki endpoint as `loki-gateway.logging.svc.cluster.local`, and sets Loki's S3 object prefix to `clusters/<cluster>`. This allows multiple clusters to use the same Loki bucket without mixing their objects. The installer creates Pod Identity associations, renders every enabled chart, then uses Helm diff to skip releases whose rendered manifests have not changed. Changed or unreleased charts are installed and waited on. It does not apply dashboards, infrastructure Ingresses, or network policies.
+`-env` sets Promtail's `log_environment` label and defaults to `test`. The installer also uses `-cluster` to set Promtail's `cluster` label, configures its Loki endpoint as `loki-gateway.logging.svc.cluster.local`, and sets Loki's S3 object prefix to `clusters/<cluster>`. This allows multiple clusters to use the same Loki bucket without mixing their objects. The installer creates Pod Identity associations, renders every enabled chart before installing it, and waits for the configured rollout targets. It does not apply dashboards or infrastructure Ingresses.
 
 When `aws-privateca-issuer` is enabled, the installer applies `private-ca/cluster-issuer.yaml` after the issuer controller rolls out. Replace `REPLACE_WITH_PRIVATE_CA_ID` in both that manifest and `iam-roles/policies/privateca-issuer-perm.json` with the existing ACM Private CA ID before installation. The manifest creates the cluster-scoped `corporate-private-ca` issuer.
 
@@ -185,37 +176,6 @@ After `kube-prometheus-stack` and Grafana are installed, apply the dashboard Con
 ```powershell
 .\dashboards\create-dashboards.ps1 -cluster my-production-cluster -profile admin
 ```
-
-### 7. Apply network policies
-
-Apply network policies last, once every required workload is available:
-
-```powershell
-.\network\create-policies.ps1 -cluster my-production-cluster -profile admin
-```
-
-### Network Policies
-
-`network/create-policies.ps1` creates every namespace in `inventory.yaml` plus `default`, `kube-public`, `kube-node-lease`, and `app-dev`, then applies the policies in `network/policies/`.
-
-Every namespace baseline selects all Pods and isolates both ingress and egress. It allows same-namespace egress, CoreDNS on TCP/UDP 53, and outbound HTTPS on TCP 443; ingress is allowed only by explicit policies. The table lists the additional rules in each namespace. `VPC CIDR` means the temporary `10.0.0.0/23` placeholder; replace it with the cluster VPC CIDR before production use.
-
-| Namespace | Additional ingress | Additional egress |
-| --- | --- | --- |
-| [`app-dev`](network/policies/app-dev.yaml) | Prometheus scraping from `monitoring` | NATS in `nats-system` on TCP 4222 |
-| [`argocd`](network/policies/argocd.yaml) | Prometheus scraping from `monitoring`<br>VPC CIDR to Argo CD Server on TCP 8080 | None |
-| [`cert-manager`](network/policies/cert-manager.yaml) | Prometheus scraping from `monitoring`<br>VPC CIDR to the admission webhook on TCP 10250 | EKS Pod Identity agent at `169.254.170.23:80` |
-| [`default`](network/policies/default.yaml) | Prometheus scraping from `monitoring` | None |
-| [`external-secrets`](network/policies/external-secrets.yaml) | Prometheus scraping from `monitoring`<br>VPC CIDR to the admission webhook on TCP 10250 | EKS Pod Identity agent at `169.254.170.23:80` |
-| [`kube-node-lease`](network/policies/kube-node-lease.yaml) | None | None |
-| [`kube-public`](network/policies/kube-public.yaml) | None | None |
-| [`kube-system`](network/policies/kube-system.yaml) | All namespaces to CoreDNS on TCP/UDP 53<br>Prometheus scraping from `monitoring`<br>VPC CIDR to the AWS Load Balancer Controller webhook on TCP 9443 | CoreDNS DNS forwarding on TCP/UDP 53<br>EKS Pod Identity agent at `169.254.170.23:80` |
-| [`logging`](network/policies/logging.yaml) | Prometheus scraping from `monitoring`<br>Grafana in `monitoring` to the Loki gateway on TCP 8080 | Loki to the EKS Pod Identity agent on TCP 80 |
-| [`monitoring`](network/policies/monitoring.yaml) | VPC CIDR to Grafana on TCP 3000 and the Prometheus admission webhook on TCP 10250 | Prometheus to workload Pods in all namespaces<br>Prometheus to node metrics in the VPC CIDR on TCP 9100 and 10250 |
-| [`nats-system`](network/policies/nats-system.yaml) | Prometheus scraping from `monitoring`<br>`app-dev` to NATS on TCP 4222 | None |
-
-These policies are enforced only when the Amazon VPC CNI network-policy feature is enabled. Confirm the CNI version and enable its `enableNetworkPolicy` setting before relying on this baseline.
-
 
 ### Grafana Dashboard ConfigMaps
 
