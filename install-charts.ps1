@@ -52,6 +52,13 @@ foreach ($Tool in @("aws", "helm", "kubectl")) {
         exit
     }
 }
+
+& helm diff version | Out-Null
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Required Helm diff plugin is missing. Run: helm plugin install --verify=false https://github.com/databus23/helm-diff"
+    exit
+}
+
 Write-Host "All deployment tools found." -ForegroundColor Green
 
 ####################################################################
@@ -125,25 +132,28 @@ try {
 
         # --- DYNAMIC MULTI-CLUSTER SET ARGUMENTS ---
         $HelmArgs = @("upgrade", "--install", $ReleaseName, $LocalChartPath, "--namespace", $Addon.Namespace, "--create-namespace", "--values", $ExternalValuesPath)
+        $DynamicHelmArgs = @()
         
         if ($Addon.ChartName -eq "aws-load-balancer-controller") {
-            $HelmArgs += @("--set", "clusterName=$Cluster")
+            $DynamicHelmArgs += @("--set", "clusterName=$Cluster")
         }
         elseif ($Addon.ChartName -eq "karpenter") {
-            $HelmArgs += @("--set", "settings.clusterName=$Cluster")
+            $DynamicHelmArgs += @("--set", "settings.clusterName=$Cluster")
         }
         elseif ($Addon.ChartName -eq "promtail") {
-            $HelmArgs += @(
+            $DynamicHelmArgs += @(
                 "--set-string", "config.clients[0].url=http://loki-gateway.logging.svc.cluster.local/loki/api/v1/push",
                 "--set-string", "config.clients[0].external_labels.cluster=$cluster",
                 "--set-string", "config.clients[0].external_labels.log_environment=$env"
             )
         }
         elseif ($Addon.ChartName -eq "loki") {
-            $HelmArgs += @(
+            $DynamicHelmArgs += @(
                 "--set-string", "loki.storage.object_store.storage_prefix=clusters/$cluster"
             )
         }
+
+        $HelmArgs += $DynamicHelmArgs
 
         # --- HELM RENDER PREFLIGHT ---
         Write-Host "Rendering chart with final deployment values..." -ForegroundColor Gray
@@ -151,19 +161,39 @@ try {
         & helm $HelmTemplateArgs | Out-Null
         if ($LASTEXITCODE -ne 0) { Write-Error "Helm template failed for addon: $($Addon.ChartName)"; exit }
 
+        # --- HELM DIFF GATE ---
+        Write-Host "Checking rendered manifest changes..." -ForegroundColor Gray
+        $HelmDiffArgs = @("diff", "upgrade", "--install", "--detailed-exitcode", "--include-crds", $ReleaseName, $LocalChartPath, "--namespace", $Addon.Namespace, "--values", $ExternalValuesPath) + $DynamicHelmArgs
+        & helm $HelmDiffArgs
+        $HelmDiffExitCode = $LASTEXITCODE
+
+        if ($HelmDiffExitCode -eq 0) {
+            Write-Host "No rendered manifest changes. Skipping Helm upgrade." -ForegroundColor Green
+            $ShouldUpgrade = $false
+        }
+        elseif ($HelmDiffExitCode -eq 2) {
+            $ShouldUpgrade = $true
+        }
+        else {
+            Write-Error "Helm diff failed for addon: $($Addon.ChartName)"
+            exit
+        }
+
         # --- HELM UPGRADE ENGINE ---
-        $HelmArgs += @("--atomic", "--wait", "--wait-for-jobs", "--timeout", "10m")
-        Write-Host "Running local helm release installer..." -ForegroundColor Gray
-        & helm $HelmArgs
+        if ($ShouldUpgrade) {
+            $HelmArgs += @("--atomic", "--wait", "--wait-for-jobs", "--timeout", "10m")
+            Write-Host "Running local helm release installer..." -ForegroundColor Gray
+            & helm $HelmArgs
 
-        if ($LASTEXITCODE -ne 0) { Write-Error "Helm upgrade failed."; exit }
+            if ($LASTEXITCODE -ne 0) { Write-Error "Helm upgrade failed."; exit }
 
-        # --- ROLLOUT STATUS EVALUATION ---
-        Write-Host "Checking target workload rollout verifications..." -ForegroundColor Gray
-        foreach ($Target in $Addon.RolloutTargets) {
-            $ResourceString = "$($Target.Type.ToLower())/$($Target.Name)"
-            kubectl rollout status $ResourceString --namespace $Addon.Namespace --timeout=300s
-            if ($LASTEXITCODE -ne 0) { Write-Error "Rollout timed out or crashed on target: $ResourceString."; exit }
+            # --- ROLLOUT STATUS EVALUATION ---
+            Write-Host "Checking target workload rollout verifications..." -ForegroundColor Gray
+            foreach ($Target in $Addon.RolloutTargets) {
+                $ResourceString = "$($Target.Type.ToLower())/$($Target.Name)"
+                kubectl rollout status $ResourceString --namespace $Addon.Namespace --timeout=300s
+                if ($LASTEXITCODE -ne 0) { Write-Error "Rollout timed out or crashed on target: $ResourceString."; exit }
+            }
         }
 
         if ($Addon.ChartName -eq "aws-privateca-issuer") {
